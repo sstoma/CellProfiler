@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+Calculation package contains a number of functions used in contour grow and evaluation.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
 # External imports
 import math
 
 import numpy as np
+import scipy.ndimage as sp_image
 from matplotlib.path import Path
 
 from index import Index
@@ -13,102 +18,84 @@ from index import Index
 def euclidean_norm((x1, y1), (x2, y2)):
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-
-def interpolate(final_edgepoints, points_number, xmins3):
-    # Interpolacja konturu, na odrzucone punkty
-    # Lista indeksów zatwierdzonych punktów konturu
-    cumlengths = np.where(final_edgepoints)[0]
+def interpolate_radiuses(values_mask, length, values):
+    """
+    Fill values with linear interpolation using values_mask values.
+    @type values_mask: np.ndarray
+    @param values_mask: mask of existing values
+    @type values: np.ndarray
+    @type length: int
+    """
+    cumlengths = np.where(values_mask)[0]
     if len(cumlengths) > 0:
-        # Dodanie na końcu listy indeksu pierwszego punktu zwiększonego o liczbę
-        # punktów konturu, dla obliczenia długości przedziału interpolacji
-        cumlengths_loop = np.append(cumlengths, cumlengths[0] + int(points_number))
+        cumlengths_loop = np.append(cumlengths, cumlengths[0] + int(length))
         for i in range(len(cumlengths)):
-            # Indeks bieżącego punktu konturu
-            # current = cumlengths[i]
+            # Find left and right boundary in existing values.
             left_interval_boundary = cumlengths_loop[i]
-            # Długość przedziału interpolacji (ilość odrzuconych punktów konturu do najbliższego zatwierdzonego)
-            # mlength = cumlengths_loop[i + 1] - current - 1
+            right_interval_boundary = cumlengths_loop[i + 1] % length
+
+            # Length of the interpolated interval.
             interval_length = cumlengths_loop[i + 1] - left_interval_boundary - 1
-            # Indeks końca przedziału interpolacji (ostatniego interpolowanego punktu)
-            # jend = (current + mlength + 1) % points_number
-            right_interval_boundary = cumlengths_loop[i + 1] % points_number
 
-            # Dla każdego punktu w przedziale interpolacji
-            for k in range(left_interval_boundary + 1, left_interval_boundary + interval_length + 1):
-                # Indeks interpolowanego punktu
-                interpolated = k % points_number
-                # Oblicz nową interpolowaną wartość
-                new_val = round(xmins3[left_interval_boundary] + (
-                    xmins3[right_interval_boundary] - xmins3[left_interval_boundary]) * (k - left_interval_boundary) / (
-                                    interval_length + 1))
-                # Zwróć minimum jako wynik interpolacji - interpolacja nie może oddalić konturu od środka komórki
-                xmins3[interpolated] = min(xmins3[interpolated], new_val)
+            # Interpolate for every point in the interval.
+            for k in range(1, interval_length + 1):
+                interpolated = (left_interval_boundary + k) % length
+
+                new_val = round(values[left_interval_boundary] +
+                                (values[right_interval_boundary] - values[left_interval_boundary]) *
+                                k / (interval_length + 1)) # TODO? dzielenie całkowitoliczbowe
+
+                # TODO? Zwróć minimum jako wynik interpolacji - interpolacja nie może oddalić konturu od środka komórki
+                values[interpolated] = min(values[interpolated], new_val)
 
 
-def loop_connected_components(v):
+def loop_connected_components(mask):
     """
-    @param v: numpy.array (1-dim)
+    @type mask: np.ndarray
+    @rtype (np.ndarray, np.ndarray, np.ndarray)
     """
 
-    c = []
+    c = np.array([])
     init = np.array([])
-    fin = []
-    if v.sum() > 0:
-        c.append(0)
-        fin.append(1)
-        current = 0
-        for i in xrange(0, v.shape[0]):
-            if v[i]:
-                c[current] += 1
-                fin[current] = i
-            else:
-                if c[current] is not 0:
-                    current += 1
-                    c.append(0)
-                    fin.append(i)
+    fin = np.array([])
 
-        c = np.array(c)
-        fin = np.array(fin)
+    if mask.sum() > 0:
+        labeled = sp_image.label(mask)[0]
+        components = sp_image.measurements.find_objects(labeled)
+        c_fin = [(s[0].stop - s[0].start, s[0].stop - 1) for s in components]
+        if len(c_fin) > 1 and mask[0] and mask[-1]:
+            c_fin[0] = c_fin[0][0] + c_fin[-1][0], c_fin[0][1]
+            c_fin = c_fin[0:-1]
 
-        if c.shape[0] > 1:
-            if c[-1] == 0:
-                c = c[0:-1]
-                fin = fin[0:-1]
-
-            if v[0] and v[-1]:
-                c[0] = c[0] + c[-1]
-                c = c[0:-1]
-                fin = fin[0:-1]
-
-        init = (fin - c) % v.shape[0] + 1
-    return np.array(c), init, fin
+        c, fin = zip(*c_fin)
+        c = np.array(c, dtype=int)
+        fin = np.array(fin, dtype=int)
+        init = (fin - c) % mask.shape[0] + 1
+    return c, init, fin
 
 
 def unstick_contour(edgepoints, unstick_coeff):
-            """
-            Removes edgepoints near previously discarded points.
-            @type edgepoints: list of boolean
-            @param edgepoints: current edgepoint list
-            @type unstick_coeff: float
-            @param unstick_coeff
-            @return: filtered edgepoints
-            """
-            (n, init, end) = loop_connected_components(np.logical_not(edgepoints))
-            filtered = np.copy(edgepoints)
-            n_edgepoint = len(edgepoints)
-            for size, s, e in zip(n, init, end):
-                for j in range(1,int(size * unstick_coeff + 0.5) + 1):
-                    filtered[(e+j) % n_edgepoint] = 0
-                    filtered[(s-j) % n_edgepoint] = 0
-            return filtered
+    """
+    Removes edgepoints near previously discarded points.
+    @type edgepoints: list[bool]
+    @param edgepoints: current edgepoint list
+    @type unstick_coeff: float
+    @param unstick_coeff
+    @return: filtered edgepoints
+    """
+    (n, init, end) = loop_connected_components(np.logical_not(edgepoints))
+    filtered = np.copy(edgepoints)
+    n_edgepoint = len(edgepoints)
+    for size, s, e in zip(n, init, end):
+        for j in range(1, int(size * unstick_coeff + 0.5) + 1):
+            filtered[(e + j) % n_edgepoint] = 0
+            filtered[(s - j) % n_edgepoint] = 0
+    return filtered
 
 
 def sub2ind(dim, (x, y)):
     return x + y * dim
 
-
-def index(px, py):
-    return np.column_stack((py.flat, px.flat)).astype(np.int64)
 
 def get_gradient(im, index, border_thickness_steps):
     """
@@ -166,7 +153,7 @@ def get_gradient(im, index, border_thickness_steps):
 
         current_step_gradient /= np.sqrt(border_thickness_step)
         # Zapisz gradient do wyznaczonego wycinka macierzy wyników
-        gradients_for_steps[intersect_start:intersect_end, :, border_thickness_step-1] = current_step_gradient
+        gradients_for_steps[intersect_start:intersect_end, :, border_thickness_step - 1] = current_step_gradient
 
     return gradients_for_steps.max(axis=max_gradient_along_axis)
 

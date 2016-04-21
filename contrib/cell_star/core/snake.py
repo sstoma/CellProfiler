@@ -140,7 +140,7 @@ class Snake(object):
         # for angle:
         #   for radius:
 
-        index = calc_util.index(px.round(), py.round()).reshape(
+        index = Index.create(px.round(), py.round()).reshape(
             (polar_transform.x.shape[0], polar_transform.x.shape[1], 2))
 
         #
@@ -186,7 +186,7 @@ class Snake(object):
             calc_util.unstick_contour(self.original_edgepoints, unstick)
 
         # Interpolate points where no reliable points had been found.
-        calc_util.interpolate(self.final_edgepoints, points_number, smoothed_radius)
+        calc_util.interpolate_radiuses(self.final_edgepoints, points_number, smoothed_radius)
 
         #
         # Create contour points list
