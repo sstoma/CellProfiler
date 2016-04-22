@@ -3,10 +3,7 @@ __author__ = 'Adam Kaczmarek, Filip Mróz'
 
 # External imports
 import os
-from os import makedirs
-from os.path import  exists
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
 import scipy.misc
@@ -14,14 +11,6 @@ import scipy.ndimage
 from numpy import argwhere
 from scipy.ndimage.filters import *
 
-debug_image_path = "debug"
-
-SHOW = False
-SILENCE = False
-
-def prepare_debug_folder():
-    if not exists(debug_image_path):
-        makedirs(debug_image_path)
 
 def convolve2d(img, kernel, mode='same'):
     return convolve(img, kernel)
@@ -66,7 +55,7 @@ def image_dilate(image, radius):
         return image
     ys, xs = box
     lp, hp = contain_pixel(image.shape, (ys[0] - radius, xs[0] - radius)), \
-        contain_pixel(image.shape, (ys[1] + radius, xs[1] + radius))
+             contain_pixel(image.shape, (ys[1] + radius, xs[1] + radius))
     ys, xs = (lp[0], hp[0]), (lp[1], hp[1])
     morphology_element = get_circle_kernel(radius)
     dilated_part = sp.ndimage.morphology.binary_dilation(image[ys[0]:ys[1], xs[0]:xs[1]], morphology_element)
@@ -100,7 +89,7 @@ def fill_foreground_holes(mask, kernel_size, minimal_hole_size, min_cluster_area
 def mark_small_areas(mask, max_hole_size, result_mask):
     components, num_components = sp.ndimage.label(mask, np.ones((3, 3)))
     slices = sp.ndimage.find_objects(components)
-    for label, slice in zip(range(1, num_components + 1),slices):
+    for label, slice in zip(range(1, num_components + 1), slices):
         components_slice = components[slice] == label
         if np.count_nonzero(components_slice) < max_hole_size:
             result_mask[slice][components_slice] = True
@@ -134,7 +123,7 @@ def fill_holes(mask, kernel_size, minimal_hole_size):
         components, num_components = sp.ndimage.label(np.logical_not(new_mask), np.ones((3, 3)))
         slices = sp.ndimage.find_objects(components)
         for label, slice in zip(range(1, num_components + 1), slices):
-            slice = extend_slices(slice,kernel_size * 2)
+            slice = extend_slices(slice, kernel_size * 2)
             components_slice = components[slice] == label
             # filter small components
             if np.count_nonzero(components_slice) < minimal_hole_size:
@@ -164,18 +153,6 @@ def fill_holes(mask, kernel_size, minimal_hole_size):
     return mask
 
 
-def draw_seeds(seeds, background, title="some_source"):
-    if not SILENCE:
-        prepare_debug_folder()
-        fig = plt.figure("draw_seeds")
-        fig.frameon = False
-        plt.imshow(background, cmap=plt.cm.gray)
-        plt.plot([s.x for s in seeds], [s.y for s in seeds], 'bo', markersize=3)
-        plt.savefig(os.path.join(debug_image_path, "seeds_"+title+".png"), pad_inches=0.0)
-        fig.clf()
-        plt.close(fig)
-
-
 def contain_pixel(shape, pixel):
     """
     Trims pixel to given dimentions, converts pixel position to int
@@ -201,7 +178,7 @@ def find_maxima(image):
     up = np.zeros(image.shape)
     down = np.zeros(image.shape)
 
-    epsilon = 0.00  #0001
+    epsilon = 0.00  # 0001
 
     right[0:height, 0:width - 1] = np.array(image[:, 0:width - 1] - image[:, 1:width] > epsilon)
     left[0:height, 1:width] = np.array(image[:, 1:width] - image[:, 0:width - 1] > epsilon)
@@ -225,11 +202,13 @@ def exclude_segments(image, segments, val):
 
     return image_segments_valued
 
+
 def image_median_filter(image, size):
     if size < 1:
         return image
 
     return median_filter(image, (size, size))
+
 
 def image_blur(image, times):
     """
@@ -279,74 +258,6 @@ def image_normalize(image):
     return np.minimum(np.maximum(image_normalized, 0), 1)
 
 
-def image_save(image, title):
-    """
-    Displays image with title using matplotlib.pyplot
-    @param image:
-    @param title:
-    """
-
-    if not SILENCE:
-        prepare_debug_folder()
-        sp.misc.imsave(os.path.join(debug_image_path, title + '.png'), image)
-
-
-def image_show(image, title):
-    """
-    Displays image with title using matplotlib.pyplot
-    @param image:
-    @param title:
-    """
-    if not SILENCE and SHOW:
-        prepare_debug_folder()
-        fig = plt.figure(title)
-        plt.imshow(image, cmap=plt.cm.gray, interpolation='none')
-        plt.show()
-        fig.clf()
-        plt.close(fig)
-
-
-def draw_overlay(image, x, y):
-    if not SILENCE and SHOW:
-        prepare_debug_folder()
-        fig = plt.figure()
-        plt.imshow(image, cmap=plt.cm.gray, interpolation='none')
-        plt.plot(x, y)
-        plt.show()
-        fig.clf()
-        plt.close(fig)
-
-
-def draw_snakes(image, snakes, outliers=.1, it=0):
-    if not SILENCE and len(snakes) > 1:
-        prepare_debug_folder()
-        snakes = sorted(snakes, key=lambda ss: ss.rank)
-        fig = plt.figure("draw_snakes")
-        plt.imshow(image, cmap=plt.cm.gray, interpolation='none')
-
-        snakes_tc = snakes[:int(len(snakes) * (1 - outliers))]
-
-        max_rank = snakes_tc[-1].rank
-        min_rank = snakes_tc[0].rank
-        rank_range = max_rank - min_rank
-        if rank_range == 0:  # for example there is one snake
-            rank_range = max_rank
-
-        rank_ci = lambda rank: 999 * ((rank - min_rank) / rank_range) if rank <= max_rank else 999
-        colors = plt.cm.jet(np.linspace(0, 1, 1000))
-        s_colors = [colors[rank_ci(s.rank)] for s in snakes]
-
-        for snake, color in zip(snakes, s_colors):
-            plt.plot(snake.xs, snake.ys, c=color, linewidth=4.0)
-
-        plt.savefig(os.path.join(debug_image_path, "snakes_rainbow_"+str(it)+".png"), pad_inches=0.0)
-        if SHOW:
-            plt.show()
-
-        fig.clf()
-        plt.close(fig)
-
-
 def tiff16_to_float(image):
     image = np.array(image, dtype=float)
     return (image - image.min()) / image.max()
@@ -367,7 +278,8 @@ def set_image_border(image, val):
 
 
 def paths(test_path):
-    return os.path.join(test_path, 'test_reference'), os.path.join(test_path, 'frames'), os.path.join(test_path, 'background')
+    return os.path.join(test_path, 'test_reference'), os.path.join(test_path, 'frames'), os.path.join(test_path,
+                                                                                                      'background')
 
 
 def frame_exists(frames_path, frame):
@@ -408,7 +320,7 @@ def load_image(filename, scaling=True):
 
         for y in xrange(height):
             for x in xrange(width):
-                image2d[y,x] = image1d[y*width + x]
+                image2d[y, x] = image1d[y * width + x]
     else:
         image2d = image.astype(float)
 

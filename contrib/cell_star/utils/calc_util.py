@@ -43,10 +43,9 @@ def interpolate_radiuses(values_mask, length, values):
 
                 new_val = round(values[left_interval_boundary] +
                                 (values[right_interval_boundary] - values[left_interval_boundary]) *
-                                k / (interval_length + 1)) # TODO? dzielenie całkowitoliczbowe
+                                k / (interval_length + 1.0))  # (interval_length + 1.0)
 
-                # TODO? Zwróć minimum jako wynik interpolacji - interpolacja nie może oddalić konturu od środka komórki
-                values[interpolated] = min(values[interpolated], new_val)
+                values[interpolated] = new_val #min(values[interpolated], new_val)
 
 
 def loop_connected_components(mask):

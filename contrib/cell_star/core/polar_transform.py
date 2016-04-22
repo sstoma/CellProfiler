@@ -6,7 +6,7 @@ import numpy as np
 import math
 import threading
 # Internal imports
-from contrib.cell_star.utils.image_util import image_dilate_with_element, get_circle_kernel, image_show
+from contrib.cell_star.utils.image_util import image_dilate_with_element, get_circle_kernel
 from contrib.cell_star.utils.calc_util import sub2ind
 
 

@@ -10,7 +10,7 @@ import sys
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.utils.params_util import default_parameters
-from contrib.cell_star.utils import image_util
+from contrib.cell_star.utils import image_util, debug_utils
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.core.seed import Seed
 from contrib.cell_star.core.snake import Snake
@@ -205,22 +205,13 @@ class Segmentation(object):
 
     def debug_images(self):
         if self.debug_output_image_path is not None:
-            image_util.debug_image_path = self.debug_output_image_path
-        image_util.image_save(self.images.background, "background")
-        image_util.image_save(self.images.brighter, "brighter")
-        image_util.image_save(self.images.brighter_original, "brighter_original")
-        image_util.image_save(self.images.darker, "darker")
-        image_util.image_save(self.images.darker_original, "darker_original")
-        image_util.image_save(self.images.cell_content_mask, "cell_content_mask")
-        image_util.image_save(self.images.cell_border_mask, "cell_border_mask")
-        image_util.image_save(self.images.foreground_mask, "foreground_mask")
-        image_util.image_save(self.images.image_back_difference, "image_back_difference")
-        pass
+            debug_utils.debug_image_path = self.debug_output_image_path
+        debug_utils.images_repo_save(self.images)
 
     def debug_seeds(self, step):
         if self.debug_output_image_path is not None:
             image_util.debug_image_path = self.debug_output_image_path
-        image_util.draw_seeds(self.all_seeds, self.images.image, title=str(step))
+        debug_utils.draw_seeds(self.all_seeds, self.images.image, title=str(step))
 
     def run_one_step(self, step):
         logger.debug("find_seeds")
@@ -231,7 +222,7 @@ class Segmentation(object):
         logger.debug("grow_snakes")
         self.grow_snakes()
         logger.debug("filter_snakes")
-        image_util.draw_snakes(self.images.image, self.snakes + self.new_snakes, it=step)
+        debug_utils.draw_snakes(self.images.image, self.snakes + self.new_snakes, it=step)
         self.filter_snakes()
         logger.debug("done")
 
@@ -242,7 +233,6 @@ class Segmentation(object):
         self.debug_images()
         for step in range(self.parameters["segmentation"]["steps"]):
             self.run_one_step(step)
-        image_util.image_show(self.images.image, 1)
         # image_util.image_show(self.images.image + (self.images.segmentation > 0), 1)
         return self.images.segmentation, self.snakes
 
