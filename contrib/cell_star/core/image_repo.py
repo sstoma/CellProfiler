@@ -100,6 +100,16 @@ class ImageRepo(object):
 
         return self._segmentation
 
+    def apply_mask(self, ignore_mask):
+        """
+        @param ignore_mask: binary mask of places which are to be ignored
+        @type ignore_mask: np.ndarray
+        """
+        use_mask = np.logical_not(ignore_mask)
+        masked_image = self._image_original * use_mask
+        filler_value = np.median(masked_image)
+        self.image = masked_image + filler_value * ignore_mask
+
     def __init__(self, image, parameters):
         """
         @param image: 0-1 float array
@@ -110,7 +120,9 @@ class ImageRepo(object):
 
         # float arrays
         self.image = image
+        self._image_original = image
         self._background = None
+        self._mask = None
         self._brighter_original = None
         self._darker_original = None
         self._clean_original = None
@@ -133,7 +145,7 @@ class ImageRepo(object):
     def init_segmentation(self):
         self._segmentation = np.zeros(self.image.shape[:2], int)
 
-    def calculate_background(self, background_mask=None):
+    def calculate_background(self, background_mask=None, ignore_mask=None):
         """
         Fills in background pixels based on foreground pixels using blur.
         @param background_mask: pixels that belong to the background, if not given background is calculated from image

@@ -10,7 +10,7 @@ import sys
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.utils.params_util import default_parameters
-from contrib.cell_star.utils import image_util, debug_utils
+from contrib.cell_star.utils import image_util, debug_util
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.core.seed import Seed
 from contrib.cell_star.core.snake import Snake
@@ -80,6 +80,9 @@ class Segmentation(object):
 
     def set_background(self, background):
         self.images._background = background
+
+    def set_mask(self, mask):
+        self.images._mask = mask
 
     def init_seeder(self):
         self._seeder = Seeder(self.images, self.parameters)
@@ -205,13 +208,13 @@ class Segmentation(object):
 
     def debug_images(self):
         if self.debug_output_image_path is not None:
-            debug_utils.debug_image_path = self.debug_output_image_path
-        debug_utils.images_repo_save(self.images)
+            debug_util.debug_image_path = self.debug_output_image_path
+        debug_util.images_repo_save(self.images)
 
     def debug_seeds(self, step):
         if self.debug_output_image_path is not None:
             image_util.debug_image_path = self.debug_output_image_path
-        debug_utils.draw_seeds(self.all_seeds, self.images.image, title=str(step))
+        debug_util.draw_seeds(self.all_seeds, self.images.image, title=str(step))
 
     def run_one_step(self, step):
         logger.debug("find_seeds")
@@ -222,7 +225,7 @@ class Segmentation(object):
         logger.debug("grow_snakes")
         self.grow_snakes()
         logger.debug("filter_snakes")
-        debug_utils.draw_snakes(self.images.image, self.snakes + self.new_snakes, it=step)
+        debug_util.draw_snakes(self.images.image, self.snakes + self.new_snakes, it=step)
         self.filter_snakes()
         logger.debug("done")
 
@@ -231,6 +234,7 @@ class Segmentation(object):
         logger.debug("preproces...")
         self.pre_process()
         self.debug_images()
+        debug_util.explore_cellstar(self)
         for step in range(self.parameters["segmentation"]["steps"]):
             self.run_one_step(step)
         # image_util.image_show(self.images.image + (self.images.segmentation > 0), 1)

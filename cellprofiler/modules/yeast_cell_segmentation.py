@@ -235,6 +235,11 @@ class YeastCellSegmentation(cpmi.Identify):
             image (same image will be used for every image in the workflow)?
             """%globals())
 
+        self.mask_image_name = cps.ImageNameSubscriber(
+            "Select mask image",doc="""
+            Marks the region in the image which are to be ignored by the algorithm. TODO
+            """%globals(), can_be_blank=True)
+
         # TODO add bkg. synthetized from first image
         self.background_elimination_strategy = cps.Choice(
             'Select the background calculation mode',
@@ -406,7 +411,8 @@ class YeastCellSegmentation(cpmi.Identify):
                 self.background_elimination_strategy,
                 self.show_autoadapted_params,
                 self.autoadapted_params,
-                self.autoadaptation_steps
+                self.autoadaptation_steps,
+                self.mask_image_name
                 ]
     
     def visible_settings(self):
@@ -440,7 +446,9 @@ class YeastCellSegmentation(cpmi.Identify):
             list.append( self.background_elimination_strategy ) #
             
             if self.background_elimination_strategy == BKG_FILE:
-                list.append(self.background_image_name) 
+                list.append(self.background_image_name)
+
+            list.append(self.mask_image_name)
             
         list.append(self.should_save_outlines)
         #
@@ -559,6 +567,11 @@ class YeastCellSegmentation(cpmi.Identify):
         self.input_image_file_name = input_image.file_name
         input_pixels = input_image.pixel_data
 
+        mask_pixels = None
+        if self.mask_image_name.value != cps.LEAVE_BLANK:
+            mask_image = image_set.get_image(self.mask_image_name)
+            mask_pixels = mask_image.pixel_data > 0
+
         # Load previously computed background.
         if self.background_elimination_strategy == BKG_FILE:
             background_pixels = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
@@ -595,7 +608,7 @@ class YeastCellSegmentation(cpmi.Identify):
         #
         # Segmentation
         #
-        objects, objects_qualities, background_pixels = self.segmentation(normalized_image, background_pixels)
+        objects, objects_qualities, background_pixels = self.segmentation(normalized_image, background_pixels, mask_pixels)
         objects.parent_image = input_image
 
         if self.__get(F_BACKGROUND, workspace, None) is None and self.background_elimination_strategy == BKG_FIRST:
@@ -678,7 +691,7 @@ class YeastCellSegmentation(cpmi.Identify):
     # Segmentation of the image into yeast cells.
     # Returns: yeast cells, yeast cells qualities, background
     #
-    def segmentation(self, normalized_image, background_pixels):
+    def segmentation(self, normalized_image, background_pixels, mask_pixels = None):
         cellstar = self.prepare_cell_star_object(self.segmentation_precision.value)
 
         if self.input_image_file_name is not None:
@@ -688,6 +701,7 @@ class YeastCellSegmentation(cpmi.Identify):
 
         cellstar.set_frame(normalized_image)
         cellstar.set_background(background_pixels)
+        cellstar.set_mask(mask_pixels)
         segmented_image, snakes = cellstar.run_segmentation()
 
         objects = cellprofiler.objects.Objects()
@@ -699,7 +713,12 @@ class YeastCellSegmentation(cpmi.Identify):
         #if self.current_workspace.frame is not None:
         self.current_workspace.display_data.segmentation_pixels = objects.segmented
 
-        return objects, np.array([-s.rank for s in snakes]), cellstar.images.background
+        raw_qualities = [-s.rank for s in snakes]
+        if not raw_qualities == []:
+            raw_interval = min(raw_qualities), max(raw_qualities)
+            logger.info("Qualities are in interval [%.3f,%.3f]." % raw_interval)
+
+        return objects, np.array(raw_qualities), cellstar.images.background
 
     def ground_truth_editor( self ):
         '''Display a UI for GT editing'''

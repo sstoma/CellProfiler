@@ -47,8 +47,12 @@ class PFSnake(object):
     def merge_parameters_with_me(self, new_params):
         return PFSnake.merge_parameters(self.initial_parameters, new_params)
 
-    def grow(self, supplementary_parameters):
-        new_parameters = self.merge_parameters_with_me(supplementary_parameters)
+    def grow(self, supplementary_parameters=None):
+        if supplementary_parameters is None:
+            new_parameters = copy.deepcopy(self.initial_parameters)
+        else:
+            new_parameters = self.merge_parameters_with_me(supplementary_parameters)
+
         s = Snake.create_from_seed(new_parameters, self.seed, self.point_number, self.images)
 
         size_weight_list = new_parameters["segmentation"]["stars"]["sizeWeight"]

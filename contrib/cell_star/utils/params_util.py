@@ -45,19 +45,18 @@ def parameters_from_segmentation_precision(parameters, segmentation_precision):
     parameters["segmentation"]["maxFreeBorder"] = \
         max(0.4, 0.7 * 16 / max(16, parameters["segmentation"]["stars"]["points"]))
 
-    parameters["segmentation"]["seeding"]["from"]["houghTransform"] = int(segmentation_precision == 1)
     parameters["segmentation"]["seeding"]["from"]["cellBorder"] = int(segmentation_precision >= 2)
     parameters["segmentation"]["seeding"]["from"]["cellBorderRandom"] = sfrom(14)
     parameters["segmentation"]["seeding"]["from"]["cellContent"] = int(segmentation_precision >= 11)
     parameters["segmentation"]["seeding"]["from"]["cellContentRandom"] = min(4, sfrom(12))
     parameters["segmentation"]["seeding"]["from"]["cellBorderRemovingCurrSegments"] = \
         int(segmentation_precision >= 11)
-    parameters["segmentation"]["seeding"]["from"]["cellBorderRemovingCurrSegmentsRandom"] = min(4, sfrom(16))
+    parameters["segmentation"]["seeding"]["from"]["cellBorderRemovingCurrSegmentsRandom"] = max(0, min(4, sfrom(16)))
     parameters["segmentation"]["seeding"]["from"]["cellContentRemovingCurrSegments"] = \
         int(segmentation_precision >= 7)
-    parameters["segmentation"]["seeding"]["from"]["cellContentRemovingCurrSegmentsRandom"] = min(4, sfrom(12))
+    parameters["segmentation"]["seeding"]["from"]["cellContentRemovingCurrSegmentsRandom"] = max(0, min(4, sfrom(12)))
     parameters["segmentation"]["seeding"]["from"]["snakesCentroids"] = int(segmentation_precision >= 9)
-    parameters["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = min(4, sfrom(14))
+    parameters["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = max(0, min(4, sfrom(14)))
 
     parameters["segmentation"]["stars"]["step"] = 0.0067 * max(1, (1 + (15 - segmentation_precision) / 2))
 

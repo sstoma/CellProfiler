@@ -11,7 +11,7 @@ from cellprofiler.preferences import get_max_workers
 from contrib.cell_star.config.config import default_config
 from contrib.cell_star.parameter_fitting.pf_process import run, test_trained_parameters
 from contrib.cell_star.parameter_fitting.pf_snake import GTSnake
-from contrib.cell_star.utils import image_util, debug_utils
+from contrib.cell_star.utils import image_util, debug_util
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def test_parameters(image_path, mask_path, precision, avg_cell_diameter, params,
 
     output_name = None
     if output_path is not None:
-        debug_utils.debug_image_path = output_path
+        debug_util.debug_image_path = output_path
         output_name = "trained"
 
     test_trained_parameters(frame, params["segmentation"]["stars"], precision, avg_cell_diameter, output_name)

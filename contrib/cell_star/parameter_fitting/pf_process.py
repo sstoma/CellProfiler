@@ -20,7 +20,7 @@ from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.parameter_fitting.pf_snake import PFSnake
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.process.segmentation import Segmentation
-from contrib.cell_star.utils.debug_utils import image_show, image_save
+from contrib.cell_star.utils.debug_util import image_show, image_save
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode
 
 from cellprofiler.preferences import get_max_workers
