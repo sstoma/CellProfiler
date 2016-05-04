@@ -52,7 +52,7 @@ class test_YeastSegmentation(unittest.TestCase):
         
         binary_image - if thresholding using a binary image, the image
         '''
-        module = YS.YeastCellSegmentation()
+        module = YS.IdentifyYeastCells()
         module.module_num = 1
         module.input_image_name.value = IMAGE_NAME
         module.object_name.value = OBJECTS_NAME
@@ -76,10 +76,10 @@ class test_YeastSegmentation(unittest.TestCase):
         return workspace, module
 
     def test_00_00_init(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         
     def test_01_00_test_zero_objects(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -115,7 +115,7 @@ class test_YeastSegmentation(unittest.TestCase):
 
 
     def test_01_01_test_one_object(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -160,7 +160,7 @@ class test_YeastSegmentation(unittest.TestCase):
             self.assertTrue(all([column[1] in features for column in ocolumns]))
 
     def test_01_02_test_two_bright_objects(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -201,7 +201,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue(location_center_x[0]<40)
 
     def test_01_03_test_two_dark_objects(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -242,7 +242,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue(location_center_x[1]<40)
 
     def test_01_04_test_two_flu_bright_objects(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -284,7 +284,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue(location_center_x[0]<40)
 
     def test_01_05_test_two_flu_dark_objects(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -326,7 +326,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue(location_center_x[0]<40)
 
     def test_01_06_fill_holes(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -351,7 +351,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue(objects.segmented[30,30] > 0)
 
     def test_01_07_extreme_params(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 14
         x.input_image_name.value = IMAGE_NAME
@@ -375,7 +375,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertEqual(0, objects.count)
 
     def test_02_01_discard_large(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -406,7 +406,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertEqual(np.product(location_center_x.shape),2)
 
     def test_02_02_discard_small(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.segmentation_precision.value = 11
         x.input_image_name.value = IMAGE_NAME
@@ -437,7 +437,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertEqual(np.product(location_center_x.shape),2)
 
     def test_02_03_use_background_image(self):
-        x = YS.YeastCellSegmentation()
+        x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
         x.input_image_name.value = IMAGE_NAME
         x.segmentation_precision.value = 11

@@ -211,7 +211,7 @@ M_OBJECT_FEATURES_OBJECT_QUALITY= '%s_%s' % (C_OBJECT_FEATURES, FTR_OBJECT_QUALI
 ###################################
 
 
-class YeastCellSegmentation(cpmi.Identify):
+class IdentifyYeastCells(cpmi.Identify):
     module_name = "IdentifyYeastCells"
     category = "Yeast Toolbox"
     variable_revision_number = 6

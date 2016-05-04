@@ -8,8 +8,6 @@ import os
 from os import makedirs
 from os.path import exists
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
 
@@ -17,16 +15,23 @@ from contrib.cell_star.core import image_repo
 
 debug_image_path = "debug"
 
-SHOW = False
-if not SHOW:
-    matplotlib.use('Agg')
-
 # main switch which turn off all debugging utils (always deploy with False)
-SILENCE = False
-
+SILENCE = True
+SHOW = False
 # allow the user to inspect cell star results before segmentation (only for debugging)
 EXPLORE = False
 
+# pyplot import can fail if cellstar used as a plugin
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    if not SHOW:
+        try:
+            matplotlib.use('Agg')
+        except:
+            pass
+except:
+    SILENCE = True  # turn of debugging images if unavailable (e.g. in CP 2.2 BETA)
 
 def prepare_debug_folder():
     if not exists(debug_image_path):

@@ -107,7 +107,7 @@ pymodule_to_cpmodule = {'align' : 'Align',
                         'calculateimageoverlap' : 'CalculateImageOverlap',
                         'unmixcolors': 'UnmixColors',
                         'untangleworms': 'UntangleWorms',
-                        'yeast_cell_segmentation' : 'YeastCellSegmentation'
+                        'yeast_cell_segmentation' : 'IdentifyYeastCells'
                         }
 
 # the builtin CP modules that will be loaded from the cellprofiler.modules directory
