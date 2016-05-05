@@ -12,7 +12,7 @@ import numpy as np
 from contrib.cell_star.core.point import Point
 from contrib.cell_star.utils import calc_util, image_util
 from contrib.cell_star.utils.index import Index
-from contrib.cell_star.utils.python_util import *
+from contrib.cell_star.utils.debug_util import *
 
 
 class Snake(object):

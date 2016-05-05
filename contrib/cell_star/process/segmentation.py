@@ -18,7 +18,7 @@ from contrib.cell_star.core.snake_filter import SnakeFilter
 from contrib.cell_star.core.polar_transform import PolarTransform
 from contrib.cell_star.parameter_fitting.pf_auto_params import rank_parameters_range as rank_auto_params
 from contrib.cell_star.parameter_fitting.pf_auto_params import parameters_range as snake_auto_params
-from contrib.cell_star.utils.python_util import memory_profile, speed_profile
+from contrib.cell_star.utils.debug_util import memory_profile, speed_profile
 
 
 class Segmentation(object):

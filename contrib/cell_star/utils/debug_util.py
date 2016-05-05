@@ -15,6 +15,10 @@ from contrib.cell_star.core import image_repo
 
 debug_image_path = "debug"
 
+# profiling switches
+PROFILE_SPEED = False
+PROFILE_MEMORY = False
+
 # main switch which turn off all debugging utils (always deploy with False)
 SILENCE = True
 SHOW = False
@@ -25,6 +29,7 @@ EXPLORE = False
 try:
     import matplotlib
     import matplotlib.pyplot as plt
+
     if not SHOW:
         try:
             matplotlib.use('Agg')
@@ -32,6 +37,7 @@ try:
             pass
 except:
     SILENCE = True  # turn of debugging images if unavailable (e.g. in CP 2.2 BETA)
+
 
 def prepare_debug_folder():
     if not exists(debug_image_path):
@@ -151,3 +157,48 @@ def draw_snakes(image, snakes, outliers=.1, it=0):
 
         fig.clf()
         plt.close(fig)
+
+
+try:
+    import line_profiler
+    import memory_profiler
+except:
+    pass
+
+
+def speed_profile(func):
+    def profiled_func(*args, **kwargs):
+        try:
+            profiler = line_profiler.LineProfiler()
+            profiler.add_function(func)
+            profiler.enable_by_count()
+            return func(*args, **kwargs)
+        finally:
+            profiler.print_stats()
+
+    if PROFILE_SPEED:
+        return profiled_func
+    else:
+        return func
+
+
+def memory_profile(func):
+    if not PROFILE_MEMORY:
+        return func
+    else:
+        if func is not None:
+            def wrapper(*args, **kwargs):
+                if PROFILE_MEMORY:
+                    prof = memory_profiler.LineProfiler()
+                    val = prof(func)(*args, **kwargs)
+                    memory_profiler.show_results(prof)
+                else:
+                    val = func(*args, **kwargs)
+                return val
+
+            return wrapper
+        else:
+            def inner_wrapper(f):
+                return memory_profiler.profile(f)
+
+            return inner_wrapper
