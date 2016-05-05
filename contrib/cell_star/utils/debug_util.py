@@ -36,7 +36,7 @@ try:
         except:
             pass
 except:
-    SILENCE = True  # turn of debugging images if unavailable (e.g. in CP 2.2 BETA)
+    SILENCE = True  # turn off debugging images if unavailable (e.g. in CP 2.2 BETA)
 
 
 def prepare_debug_folder():
@@ -73,6 +73,7 @@ def images_repo_save(images):
     image_save(images.cell_content_mask, "cell_content_mask")
     image_save(images.cell_border_mask, "cell_border_mask")
     image_save(images.foreground_mask, "foreground_mask")
+    image_save(images.mask, "image_mask")
     image_save(images.image_back_difference, "image_back_difference")
 
 

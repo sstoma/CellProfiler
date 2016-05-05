@@ -81,8 +81,9 @@ class Segmentation(object):
     def set_background(self, background):
         self.images._background = background
 
-    def set_mask(self, mask):
-        self.images._mask = mask
+    def set_mask(self, ignore_mask):
+        if ignore_mask is not None:
+            self.images.apply_mask(ignore_mask)
 
     def init_seeder(self):
         self._seeder = Seeder(self.images, self.parameters)

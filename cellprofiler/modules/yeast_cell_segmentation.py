@@ -235,9 +235,9 @@ class IdentifyYeastCells(cpmi.Identify):
             image (same image will be used for every image in the workflow)?
             """%globals())
 
-        self.mask_image_name = cps.ImageNameSubscriber(
+        self.ignore_mask_image_name = cps.ImageNameSubscriber(
             "Select mask image",doc="""
-            Marks the region in the image which are to be ignored by the algorithm. TODO
+            Marks the region in the image which are to be ignored by the algorithm in segmentation. TODO
             """%globals(), can_be_blank=True)
 
         # TODO add bkg. synthetized from first image
@@ -412,53 +412,53 @@ class IdentifyYeastCells(cpmi.Identify):
                 self.show_autoadapted_params,
                 self.autoadapted_params,
                 self.autoadaptation_steps,
-                self.mask_image_name
+                self.ignore_mask_image_name
                 ]
-    
+
     def visible_settings(self):
-        list = [self.input_image_name, 
-                self.object_name, 
+        list = [self.input_image_name,
+                self.object_name,
                 self.average_cell_diameter,
                 ]
 
-        list+=[self.bright_field_image,
-                self.background_brighter_then_cell_inside,
-                self.autoadaptation_steps,
-                self.use_ground_truth_to_set_params,
-                self.show_autoadapted_params]
-        
-        if self.show_autoadapted_params:
-            list.append( self.autoadapted_params )
+        list += [self.bright_field_image,
+                 self.background_brighter_then_cell_inside,
+                 self.autoadaptation_steps,
+                 self.use_ground_truth_to_set_params,
+                 self.show_autoadapted_params]
 
-        list.append( self.advanced_parameters )
-        
+        if self.show_autoadapted_params:
+            list.append(self.autoadapted_params)
+
+        list.append(self.advanced_parameters)
+
         #
         # Show the user the background only if self.provide_background is checked
         #
         if self.advanced_parameters:
-            list.append( self.segmentation_precision )
-            list.append( self.maximal_cell_overlap )
-            list.append( self.advanced_cell_filtering )
+            list.append(self.segmentation_precision)
+            list.append(self.maximal_cell_overlap)
+            list.append(self.advanced_cell_filtering)
             if self.advanced_cell_filtering:
-                list.append( self.min_cell_area )
-                list.append( self.max_cell_area )
+                list.append(self.min_cell_area)
+                list.append(self.max_cell_area)
             # Show the user the background only if self.provide_background is checked
-            list.append( self.background_elimination_strategy ) #
-            
+            list.append(self.background_elimination_strategy)  #
+
             if self.background_elimination_strategy == BKG_FILE:
                 list.append(self.background_image_name)
 
-            list.append(self.mask_image_name)
-            
+            list.append(self.ignore_mask_image_name)
+
         list.append(self.should_save_outlines)
         #
         # Show the user the scale only if self.should_save_outlines is checked
         #
         if self.should_save_outlines:
             list.append(self.save_outlines)
-        
+
         return list
-    
+
     def is_interactive(self):
         return False
 
@@ -540,7 +540,7 @@ class IdentifyYeastCells(cpmi.Identify):
         object_name - return measurements made on this object (or 'Image' for image measurements)
         """
         result = self.get_object_categories(pipeline, object_name,
-                                             {self.object_name.value: [] })
+                                            {self.object_name.value: []})
         result += [C_OBJECT_FEATURES]
         return result
 
@@ -552,7 +552,7 @@ class IdentifyYeastCells(cpmi.Identify):
         """
 
         result = self.get_object_measurements(pipeline, object_name, category,
-                                               {self.object_name.value: [] })
+                                              {self.object_name.value: []})
         if category == C_OBJECT_FEATURES:
             result += [FTR_OBJECT_QUALITY]
         return result
@@ -563,19 +563,20 @@ class IdentifyYeastCells(cpmi.Identify):
         self.current_workspace = workspace
         image_set = workspace.image_set
 
-        input_image = image_set.get_image(input_image_name,must_be_grayscale = True)
+        input_image = image_set.get_image(input_image_name, must_be_grayscale=True)
         self.input_image_file_name = input_image.file_name
         input_pixels = input_image.pixel_data
 
-        mask_pixels = None
-        if self.mask_image_name.value != cps.LEAVE_BLANK:
-            mask_image = image_set.get_image(self.mask_image_name)
-            mask_pixels = mask_image.pixel_data > 0
+        # load mask
+        ignore_mask_pixels = None
+        if self.ignore_mask_image_name.value != cps.LEAVE_BLANK:
+            ignore_mask_image = image_set.get_image(self.ignore_mask_image_name)
+            ignore_mask_pixels = ignore_mask_image.pixel_data > 0
 
         # Load previously computed background.
         if self.background_elimination_strategy == BKG_FILE:
             background_pixels = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
-        elif self.background_elimination_strategy == BKG_FIRST: #TODO make it happen
+        elif self.background_elimination_strategy == BKG_FIRST:  # TODO make it happen
             background_pixels = self.__get(F_BACKGROUND, workspace, None)
         else:
             background_pixels = None
@@ -592,12 +593,12 @@ class IdentifyYeastCells(cpmi.Identify):
         # than background (so the bkg and image for fluorescent will be 
         # inverted at this stage)
         if not self.bright_field_image:
-            sigma = 4 # TODO think if it is a big problem to hardcode it here
-            size = int(sigma * 4)+1
+            sigma = 4  # TODO think if it is a big problem to hardcode it here
+            size = int(sigma * 4) + 1
             mask = np.ones(input_pixels.shape, bool)
             edge_pixels = laplacian_of_gaussian(input_pixels, mask, size, sigma)
-            factor = 10 # TODO think if hardcoded is fine
-            input_pixels = np.subtract(input_pixels, factor*edge_pixels) 
+            factor = 10  # TODO think if hardcoded is fine
+            input_pixels = np.subtract(input_pixels, factor * edge_pixels)
 
 
         #
@@ -608,16 +609,12 @@ class IdentifyYeastCells(cpmi.Identify):
         #
         # Segmentation
         #
-        objects, objects_qualities, background_pixels = self.segmentation(normalized_image, background_pixels, mask_pixels)
+        objects, objects_qualities, background_pixels = self.segmentation(normalized_image, background_pixels, ignore_mask_pixels)
         objects.parent_image = input_image
 
         if self.__get(F_BACKGROUND, workspace, None) is None and self.background_elimination_strategy == BKG_FIRST:
             self.__set(F_BACKGROUND, workspace, background_pixels)
-        
-        #
-        # Postprocessing
-        #
-        self.postprocessing(objects)
+
         workspace.object_set.add_objects(objects, self.object_name.value)
 
         # Make outlines
@@ -638,32 +635,26 @@ class IdentifyYeastCells(cpmi.Identify):
 
         cpmi.add_object_count_measurements(workspace.measurements,
                                            self.object_name.value, np.max(objects.segmented))
-        
-    # 
-    # Preprocessing of the input bright field image data.
-    # Returns: normalized_image 
-    #
-    def preprocessing(self,input_pixels,background_pixels):
+
+    def preprocessing(self, input_pixels, background_pixels):
         def adam_normalization(image):
             width = image.shape[1]
             height = image.shape[0]
             image1d = np.array(list(image.reshape(-1)))
             image2d = np.zeros(image.shape)
-            
+
             for y in xrange(height):
                 for x in xrange(width):
-                    image2d[y,x] = image1d[y*width + x]
+                    image2d[y, x] = image1d[y * width + x]
             return image2d
 
-        #if self.current_workspace.frame is not None:
         self.current_workspace.display_data.input_pixels = input_pixels
-            
-        
-        if background_pixels != None:
+
+        if background_pixels is not None:
             background_pixels_normalized = adam_normalization(background_pixels)
         else:
             background_pixels_normalized = None
-            
+
         return adam_normalization(input_pixels), background_pixels_normalized
 
     def prepare_cell_star_object(self, segmentation_precision):
@@ -673,8 +664,8 @@ class IdentifyYeastCells(cpmi.Identify):
             def calculate_area_multiplier(area):
                 return 4.0 * area / self.average_cell_diameter.value ** 2 / math.pi
 
-            def calculate_size_multiplier(area):
-                return calculate_area_multiplier(area) ** 0.5
+            #def calculate_size_multiplier(area):
+            #    return calculate_area_multiplier(area) ** 0.5
 
             areas_range = self.min_cell_area.value, self.max_cell_area.value
             cellstar.parameters["segmentation"]["minArea"] = max(cellstar.parameters["segmentation"]["minArea"], calculate_area_multiplier(areas_range[0]))
@@ -691,7 +682,7 @@ class IdentifyYeastCells(cpmi.Identify):
     # Segmentation of the image into yeast cells.
     # Returns: yeast cells, yeast cells qualities, background
     #
-    def segmentation(self, normalized_image, background_pixels, mask_pixels = None):
+    def segmentation(self, normalized_image, background_pixels, ignore_mask_pixels = None):
         cellstar = self.prepare_cell_star_object(self.segmentation_precision.value)
 
         if self.input_image_file_name is not None:
@@ -701,7 +692,7 @@ class IdentifyYeastCells(cpmi.Identify):
 
         cellstar.set_frame(normalized_image)
         cellstar.set_background(background_pixels)
-        cellstar.set_mask(mask_pixels)
+        cellstar.set_mask(ignore_mask_pixels)
         segmented_image, snakes = cellstar.run_segmentation()
 
         objects = cellprofiler.objects.Objects()
@@ -709,8 +700,7 @@ class IdentifyYeastCells(cpmi.Identify):
         objects.unedited_segmented = segmented_image
         objects.small_removed_segmented = np.zeros(normalized_image.shape)
         # objects.parent_image = normalized_image has to be cellprofiler image
-        
-        #if self.current_workspace.frame is not None:
+
         self.current_workspace.display_data.segmentation_pixels = objects.segmented
 
         raw_qualities = [-s.rank for s in snakes]
@@ -725,10 +715,7 @@ class IdentifyYeastCells(cpmi.Identify):
         from cellprofiler.gui.editobjectsdlg import EditObjectsDialog
         from wx import OK
         import wx
-        #title = "%s #%d, image cycle #%d: " % (self.module_name,
-        #                                     self.module_num,
-        #                                     image_set_number)
-        
+
         ### opening file dialog
         labels = None
         image_path = None
@@ -739,8 +726,8 @@ class IdentifyYeastCells(cpmi.Identify):
             if dlg.ShowModal() == wx.ID_OK:
                 from bioformats import load_image
                 image_path = dlg.Path
-                image = load_image(image_path) #lip.provide_image(None).pixel_data
-                label_path = dlg.Path + ".lab.png" # if file attached load labels from file
+                image = load_image(image_path)  # lip.provide_image(None).pixel_data
+                label_path = dlg.Path + ".lab.png"  # if file attached load labels from file
                 if isfile(label_path):
                     labels = (load_image(label_path) * 255).astype(int)
             else:
@@ -757,9 +744,12 @@ class IdentifyYeastCells(cpmi.Identify):
         # Load previously computed background.
         if self.background_elimination_strategy == BKG_FILE:
             try:
-                background_pixels = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
+                background_pixels = image_set.get_image(self.background_image_name.value,
+                                                        must_be_grayscale=True).pixel_data
             except Exception:
-                dlg = wx.MessageDialog(None, "Please load background file first (or switch to different method of background elimination)!", "Warning!", wx.OK | wx.ICON_WARNING)
+                dlg = wx.MessageDialog(None,
+                                       "Please load background file first (or switch to different method of background elimination)!",
+                                       "Warning!", wx.OK | wx.ICON_WARNING)
                 dlg.ShowModal()
                 dlg.Destroy()
                 return
@@ -783,7 +773,7 @@ class IdentifyYeastCells(cpmi.Identify):
             mask = np.ones(self.pixel_data.shape, bool)
             edge_pixels = laplacian_of_gaussian(self.pixel_data, mask, size, sigma)
             factor = 10 # TODO think if hardcoded is fine
-            self.pixel_data = np.subtract(self.pixel_data, factor*edge_pixels) 
+            self.pixel_data = np.subtract(self.pixel_data, factor*edge_pixels)
 
         if background_pixels:
             self.pixel_data = self.pixel_data - background_pixels
@@ -822,11 +812,11 @@ class IdentifyYeastCells(cpmi.Identify):
 
         ### fitting params 
         # reading GT from dialog_box.labels[0] and image from self.pixel
-        progressMax = self.autoadaptation_steps.value * 2  # every step consists of: snake params and ranking params fitting
+        progress_max = self.autoadaptation_steps.value * 2  # every step consists of: snake params and ranking params fitting
 
-        with wx.ProgressDialog("Fitting parameters..", "Iterations remaining", progressMax,
+        with wx.ProgressDialog("Fitting parameters..", "Iterations remaining", progress_max,
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME) as dialog:
-            keepGoing = True
+            keep_going = True
 
             self.param_fit_progress = 0
             self.best_snake_score = 10
@@ -838,7 +828,7 @@ class IdentifyYeastCells(cpmi.Identify):
             self.autoadapted_params.value = cellstar.encode_auto_params()
 
             try:
-                while (keepGoing or not adaptations_stopped) and self.param_fit_progress < progressMax:
+                while (keep_going or not adaptations_stopped) and self.param_fit_progress < progress_max:
                     # here put one it. of fitting instead
                     wx.Sleep(0.5)
 
@@ -858,7 +848,7 @@ class IdentifyYeastCells(cpmi.Identify):
 
                     adaptations_stopped = aft_active == []
 
-                    if adaptations_stopped and keepGoing and self.param_fit_progress < progressMax:
+                    if adaptations_stopped and keep_going and self.param_fit_progress < progress_max:
                         aft_active.append(
                             AutoFitterThread(run_pf, self.update_snake_params, image, labels, self.best_parameters,
                                      self.segmentation_precision.value, self.average_cell_diameter.value))
@@ -867,17 +857,11 @@ class IdentifyYeastCells(cpmi.Identify):
                             AutoFitterThread(run_rank_pf, self.update_rank_params, image, labels, self.best_parameters))
 
                     # here update params. in the GUI
-                    keepGoingUpdate = dialog.Update(self.param_fit_progress)[0]
-                    keepGoing = keepGoing and keepGoingUpdate
+                    keep_going_update = dialog.Update(self.param_fit_progress)[0]
+                    keep_going = keep_going and keep_going_update
 
             finally:
-                dialog.Update(progressMax)
-
-    #
-    # Postprocess objects found by CellStar
-    #
-    def postprocessing(self, objects):
-        pass
+                dialog.Update(progress_max)
 
     def update_snake_params(self, new_parameters, new_snake_score):
         if new_snake_score < self.best_snake_score:
@@ -904,7 +888,6 @@ class IdentifyYeastCells(cpmi.Identify):
 
 
 class AutoFitterThread(threading.Thread):
-
     def __init__(self, target, callback, *args):
         self._target = target
         self._args = list(args)

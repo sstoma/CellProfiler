@@ -28,6 +28,7 @@ from cellprofiler.workspace import Workspace
 
 IMAGE_NAME = "my_image"
 BACKGROUND_IMAGE_NAME = "background_image"
+MASK_IMAGE_NAME = "mask_image"
 OBJECTS_NAME = "my_objects"
 BINARY_IMAGE_NAME = "binary_image"
 MASKING_OBJECTS_NAME = "masking_objects"
@@ -469,6 +470,50 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertEqual(objects.segmented[25, 25] > 0, 1, "The small object was not there")
         self.assertEqual(objects.segmented[100, 100] > 0, 1, "The large object was not there")
         self.assertEqual(objects.segmented[150, 150] > 0, 0, "The background blob was not filtered out")
+
+    def test_02_04_mask_input_image(self):
+        x = YS.IdentifyYeastCells()
+        x.object_name.value = OBJECTS_NAME
+        x.input_image_name.value = IMAGE_NAME
+        x.segmentation_precision.value = 11
+        x.background_brighter_then_cell_inside.value = False
+        x.average_cell_diameter.value = 30
+
+        img = np.ones((200, 200)) * 0.5
+        draw_brightfield_cell(img, 100, 100, 20, False)
+        draw_brightfield_cell(img, 25, 25, 10, False)
+        img[0:10, 0:10] = 1
+        img[180:200, 180:200] = 0
+
+        msk = np.zeros((200, 200))
+        msk[0:10, 0:10] = 1
+        msk[180:200, 180:200] = 1
+
+        image = cpi.Image(img, file_name="test_02_04_mask_input_image")
+        mask = cpi.Image(msk)
+        image_set_list = cpi.ImageSetList()
+        image_set = image_set_list.get_image_set(0)
+        image_set.providers.append(cpi.VanillaImageProvider(IMAGE_NAME, image))
+        image_set.providers.append(cpi.VanillaImageProvider(MASK_IMAGE_NAME, mask))
+
+        # first try without masking
+        object_set = cpo.ObjectSet()
+        measurements = cpmeas.Measurements()
+        pipeline = cellprofiler.pipeline.Pipeline()
+        x.run(Workspace(pipeline, x, image_set, object_set, measurements, None))
+        objects = object_set.get_objects(OBJECTS_NAME)
+        self.assertEqual(0, objects.segmented.max(), "Cells should not be found due to the distractors")
+
+        # now if we use masking option we should find these cells
+        object_set = cpo.ObjectSet()
+        measurements = cpmeas.Measurements()
+        pipeline = cellprofiler.pipeline.Pipeline()
+        x.ignore_mask_image_name.value = MASK_IMAGE_NAME
+        x.run(Workspace(pipeline, x, image_set, object_set, measurements, None))
+        objects = object_set.get_objects(OBJECTS_NAME)
+        self.assertEqual(objects.segmented[25, 25] > 0, 1, "The small object was not there")
+        self.assertEqual(objects.segmented[100, 100] > 0, 1, "The large object was not there")
+
 
 
 def add_noise(img, fraction):

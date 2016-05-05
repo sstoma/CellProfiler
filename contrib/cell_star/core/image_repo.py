@@ -100,6 +100,13 @@ class ImageRepo(object):
 
         return self._segmentation
 
+    @property
+    def mask(self):
+        if self._mask is None:
+            self._mask = np.ones(self._image_original.shape, dtype=bool)
+
+        return self._mask
+
     def apply_mask(self, ignore_mask):
         """
         @param ignore_mask: binary mask of places which are to be ignored
@@ -109,6 +116,7 @@ class ImageRepo(object):
         masked_image = self._image_original * use_mask
         filler_value = np.median(masked_image)
         self.image = masked_image + filler_value * ignore_mask
+        self._mask = use_mask
 
     def __init__(self, image, parameters):
         """
@@ -145,7 +153,7 @@ class ImageRepo(object):
     def init_segmentation(self):
         self._segmentation = np.zeros(self.image.shape[:2], int)
 
-    def calculate_background(self, background_mask=None, ignore_mask=None):
+    def calculate_background(self, background_mask=None):
         """
         Fills in background pixels based on foreground pixels using blur.
         @param background_mask: pixels that belong to the background, if not given background is calculated from image
@@ -171,9 +179,13 @@ class ImageRepo(object):
                                       )
             background_mask = np.logical_not(foreground_mask)
 
+        if self._mask is not None:
+            background_mask |= np.logical_not(self._mask)
+
         filler_value = np.median(self.image)
         background = self.image.astype(float)
         foreground_mask = np.logical_not(background_mask)
+
         if background_mask.any():
             filler_value = np.median(background[background_mask])
 
@@ -236,6 +248,9 @@ class ImageRepo(object):
                                   self.parameters["segmentation"]["foreground"]["MaskMinRadius"]
                                   * self.parameters["segmentation"]["avgCellDiameter"]
                                   )
+
+        if self._mask is not None:
+            self._foreground_mask &= self._mask
 
         self._background_mask = np.logical_not(self.foreground_mask)
 

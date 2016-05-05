@@ -40,6 +40,9 @@ class SnakeFilter(object):
         filtered_snakes = []
         segments = np.zeros(original.shape, dtype=int)
 
+        # do not allow cells on masked areas
+        segments[self.images.mask == 0] = -1
+
         if len(snakes) > 0:
             snakes_sorted = sorted(enumerate(snakes), key=lambda x: x[1].rank)
             current_accepted_snake_index = 1
@@ -81,5 +84,6 @@ class SnakeFilter(object):
                                     filtered_snakes.append(curr_snake)
                                     current_accepted_snake_index += 1
 
+        segments *= self.images.mask  # clear mask
         self.images._segmentation = segments
         return filtered_snakes
