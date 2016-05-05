@@ -710,13 +710,8 @@ class IdentifyYeastCells(cpmi.Identify):
 
         return objects, np.array(raw_qualities), cellstar.images.background
 
-    def ground_truth_editor( self ):
-        '''Display a UI for GT editing'''
-        from cellprofiler.gui.editobjectsdlg import EditObjectsDialog
-        from wx import OK
+    def get_ground_truth_input_images(self):
         import wx
-
-        ### opening file dialog
         labels = None
         image_path = None
         with wx.FileDialog(None,
@@ -726,12 +721,31 @@ class IdentifyYeastCells(cpmi.Identify):
             if dlg.ShowModal() == wx.ID_OK:
                 from bioformats import load_image
                 image_path = dlg.Path
-                image = load_image(image_path)  # lip.provide_image(None).pixel_data
+                image = load_image(image_path)
+                # if colour then go to grayscale
+                # make sure that it is done the same way as in general CellProfiler flow
+                if image.ndim == 3:
+                    image = np.sum(image, 2) / image.shape[2]
+
                 label_path = dlg.Path + ".lab.png"  # if file attached load labels from file
                 if isfile(label_path):
                     labels = (load_image(label_path) * 255).astype(int)
             else:
-                return
+                return None
+
+        return image, image_path, labels
+
+    def ground_truth_editor( self ):
+        '''Display a UI for GT editing'''
+        from cellprofiler.gui.editobjectsdlg import EditObjectsDialog
+        from wx import OK
+        import wx
+
+        ### opening file dialog
+        input_data = self.get_ground_truth_input_images()
+        if input_data is None:
+            return
+        image, image_path, labels = input_data
 
         ### opening GT editor
         title = "Please mark few representative cells to allow for autoadapting parameters. \n"
