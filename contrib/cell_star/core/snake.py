@@ -11,8 +11,8 @@ import numpy as np
 
 from contrib.cell_star.core.point import Point
 from contrib.cell_star.utils import calc_util, image_util
-from contrib.cell_star.utils.index import Index
 from contrib.cell_star.utils.debug_util import *
+from contrib.cell_star.utils.index import Index
 
 
 class Snake(object):
@@ -23,6 +23,7 @@ class Snake(object):
     @ivar rank: ranking of the contour (the smaller the better)
     """
     epsilon = 1e-10
+    max_rank = 10000
 
     @property
     def xs(self):
@@ -365,7 +366,11 @@ class Snake(object):
         self.max_contiguous_free_border = fb.max() if fb.size > 0 else 0
 
         self.free_border_entropy = fb_entropy
-        self.rank = self.star_rank(ranking_params, avg_cell_diameter)
+
+        if all(self.polar_coordinate_boundary <= 1):  # minimal step is 1 (see snake_grow)
+            self.rank = Snake.max_rank
+        else:
+            self.rank = self.star_rank(ranking_params, avg_cell_diameter)
 
     def star_rank(self, ranking_params, avg_cell_diameter):
         return np.dot(self.ranking_parameters_vector(ranking_params), self.properties_vector(avg_cell_diameter))

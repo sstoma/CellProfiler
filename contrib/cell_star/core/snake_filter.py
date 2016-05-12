@@ -50,6 +50,10 @@ class SnakeFilter(object):
                 curr_snake = snakes_sorted[i][1]
                 snake_index = snakes_sorted[i][0]
 
+                if curr_snake.rank >= Snake.max_rank:
+                    logger.debug(log_message.format(snake_index, 'too high rank', curr_snake.rank))
+                    break
+
                 local_snake = curr_snake.in_polygon
                 sxy = curr_snake.in_polygon_slice
                 local_segments = segments[sxy]

@@ -20,7 +20,7 @@ PROFILE_SPEED = False
 PROFILE_MEMORY = False
 
 # main switch which turn off all debugging utils (always deploy with False)
-SILENCE = True
+DEBUGING = False
 SHOW = False
 # allow the user to inspect cell star results before segmentation (only for debugging)
 EXPLORE = False
@@ -36,7 +36,7 @@ try:
         except:
             pass
 except:
-    SILENCE = True  # turn off debugging images if unavailable (e.g. in CP 2.2 BETA)
+    DEBUGING = False  # turn off debugging images if unavailable (e.g. in CP 2.2 BETA)
 
 
 def prepare_debug_folder():
@@ -45,12 +45,12 @@ def prepare_debug_folder():
 
 
 def draw_seeds_on_axes(seeds, axes):
-    if not SILENCE:
+    if DEBUGING:
         return axes.plot([s.x for s in seeds], [s.y for s in seeds], 'bo', markersize=3)
 
 
 def draw_seeds(seeds, background, title="some_source"):
-    if not SILENCE:
+    if DEBUGING:
         prepare_debug_folder()
         fig = plt.figure("draw_seeds")
         fig.frameon = False
@@ -83,11 +83,12 @@ def image_save(image, title):
     @param image:
     @param title:
     """
-
-    if not SILENCE:
+    if DEBUGING:
         prepare_debug_folder()
-        sp.misc.imsave(os.path.join(debug_image_path, title + '.png'), image)
-
+        file_path = os.path.join(debug_image_path, title + '.tif')
+        sp.misc.imsave(file_path, image)
+        return file_path
+    return None
 
 def image_show(image, title):
     """
@@ -95,7 +96,7 @@ def image_show(image, title):
     @param image:
     @param title:
     """
-    if not SILENCE and SHOW:
+    if DEBUGING and SHOW:
         prepare_debug_folder()
         fig = plt.figure(title)
         plt.imshow(image, cmap=plt.cm.gray, interpolation='none')
@@ -105,7 +106,7 @@ def image_show(image, title):
 
 
 def draw_overlay(image, x, y):
-    if not SILENCE and SHOW:
+    if DEBUGING and SHOW:
         prepare_debug_folder()
         fig = plt.figure()
         plt.imshow(image, cmap=plt.cm.gray, interpolation='none')
@@ -116,7 +117,7 @@ def draw_overlay(image, x, y):
 
 
 def explore_cellstar(cellstar):
-    if not SILENCE and EXPLORE:
+    if DEBUGING and EXPLORE:
         import contrib.cell_star.tests.explorer as exp
         explorer_ui = exp.ExplorerFrame(images=cellstar.images)
         explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
@@ -124,7 +125,7 @@ def explore_cellstar(cellstar):
 
 
 def draw_snakes_on_axes(snakes, axes, outliers=.1):
-    if not SILENCE and len(snakes) >= 1:
+    if DEBUGING and len(snakes) >= 1:
         snakes = sorted(snakes, key=lambda ss: ss.rank)
         snakes_tc = snakes[:max(1, int(len(snakes) * (1 - outliers)))]
 
@@ -141,11 +142,11 @@ def draw_snakes_on_axes(snakes, axes, outliers=.1):
 
         # we want the best on top
         for snake, color in reversed(zip(snakes, s_colors)):
-            axes.plot(snake.xs, snake.ys, c=color, linewidth=2.0)
+            axes.plot(snake.xs, snake.ys, c=color, linewidth=1.0)
 
 
 def draw_snakes(image, snakes, outliers=.1, it=0):
-    if not SILENCE and len(snakes) > 1:
+    if DEBUGING and len(snakes) > 1:
         prepare_debug_folder()
 
         fig = plt.figure("draw_snakes")
