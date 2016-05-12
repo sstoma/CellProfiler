@@ -236,7 +236,7 @@ class IdentifyYeastCells(cpmi.Identify):
             """%globals())
 
         self.ignore_mask_image_name = cps.ImageNameSubscriber(
-            "Select mask image",doc="""
+            "Select ignore mask image",doc="""
             Marks the region in the image which are to be ignored by the algorithm in segmentation. TODO
             """%globals(), can_be_blank=True)
 
@@ -602,14 +602,14 @@ class IdentifyYeastCells(cpmi.Identify):
 
 
         #
-        # Preprocessing (only normalization)
+        # Preprocessing
         #
-        normalized_image, background_pixels = self.preprocessing(input_pixels, background_pixels)
+        input_pixels, background_pixels = self.preprocessing(input_pixels, background_pixels)
 
         #
         # Segmentation
         #
-        objects, objects_qualities, background_pixels = self.segmentation(normalized_image, background_pixels, ignore_mask_pixels)
+        objects, objects_qualities, background_pixels = self.segmentation(input_pixels, background_pixels, ignore_mask_pixels)
         objects.parent_image = input_image
 
         if self.__get(F_BACKGROUND, workspace, None) is None and self.background_elimination_strategy == BKG_FIRST:
@@ -621,7 +621,7 @@ class IdentifyYeastCells(cpmi.Identify):
         outline_image = cellprofiler.cpmath.outline.outline(objects.segmented)
         if self.should_save_outlines.value:
             out_img = cpi.Image(outline_image.astype(bool),
-                                parent_image = normalized_image)
+                                parent_image = input_pixels)
             workspace.image_set.add(self.save_outlines.value, out_img)
 
         # Save measurements
@@ -637,25 +637,12 @@ class IdentifyYeastCells(cpmi.Identify):
                                            self.object_name.value, np.max(objects.segmented))
 
     def preprocessing(self, input_pixels, background_pixels):
-        def adam_normalization(image):
-            width = image.shape[1]
-            height = image.shape[0]
-            image1d = np.array(list(image.reshape(-1)))
-            image2d = np.zeros(image.shape)
-
-            for y in xrange(height):
-                for x in xrange(width):
-                    image2d[y, x] = image1d[y * width + x]
-            return image2d
-
         self.current_workspace.display_data.input_pixels = input_pixels
 
         if background_pixels is not None:
-            background_pixels_normalized = adam_normalization(background_pixels)
-        else:
-            background_pixels_normalized = None
+            background_pixels = background_pixels.astype(float)
 
-        return adam_normalization(input_pixels), background_pixels_normalized
+        return input_pixels.astype(float), background_pixels
 
     def prepare_cell_star_object(self, segmentation_precision):
         cellstar = Segmentation(segmentation_precision, self.average_cell_diameter.value)
@@ -789,7 +776,7 @@ class IdentifyYeastCells(cpmi.Identify):
             factor = 10 # TODO think if hardcoded is fine
             self.pixel_data = np.subtract(self.pixel_data, factor*edge_pixels)
 
-        if background_pixels:
+        if background_pixels is not None:
             self.pixel_data = self.pixel_data - background_pixels
         ## end of image adaptation
 

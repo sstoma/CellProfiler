@@ -310,17 +310,7 @@ def load_image(filename, scaling=True):
         return None
     image = scipy.misc.imread(filename)
     if image.max() > 1 and scaling:
-        image = np.array(image, dtype=float) / np.iinfo(image.dtype).max
-    if image.size == 1:
-        image = image.item()
-        width = image.size[0]
-        height = image.size[1]
-        image1d = np.array(list(image.getdata()))
-        image2d = np.zeros(image.size)
-
-        for y in xrange(height):
-            for x in xrange(width):
-                image2d[y, x] = image1d[y * width + x]
+        image2d = np.array(image, dtype=float) / np.iinfo(image.dtype).max
     else:
         image2d = image.astype(float)
 

@@ -38,7 +38,11 @@ class test_YeastSegmentation(unittest.TestCase):
     def load_error_handler(self, caller, event):
         if isinstance(event, cellprofiler.pipeline.LoadExceptionEvent):
             self.fail(event.error.message)
-            
+
+    def assertRange(self, range_start, range_end, value):
+        self.assertGreaterEqual(value, range_start)
+        self.assertLessEqual(value, range_end)
+
     def make_workspace(self, image, 
                        mask = None,
                        labels = None, 
@@ -227,20 +231,17 @@ class test_YeastSegmentation(unittest.TestCase):
         quality = measurements.get_current_measurement(OBJECTS_NAME,"Features_Quality")
         self.assertTrue(len(quality) == 2)
         self.assertTrue("Location_Center_Y" in measurements.get_feature_names(OBJECTS_NAME))
-        location_center_y = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_Y")
-        self.assertTrue(isinstance(location_center_y,np.ndarray))
-        self.assertEqual(np.product(location_center_y.shape),2)
-        self.assertTrue(location_center_y[0]>25)
-        self.assertTrue(location_center_y[0]<45)
-        self.assertTrue(location_center_y[1]>5)
-        self.assertTrue(location_center_y[1]<25)
-        location_center_x = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_X")
-        self.assertTrue(isinstance(location_center_x,np.ndarray))
-        self.assertEqual(np.product(location_center_x.shape),2)
-        self.assertTrue(location_center_x[0]>3)
-        self.assertTrue(location_center_x[0]<18)
-        self.assertTrue(location_center_x[1]>20)
-        self.assertTrue(location_center_x[1]<40)
+        location_center_y = measurements.get_current_measurement(OBJECTS_NAME, "Location_Center_Y")
+        location_center_x = measurements.get_current_measurement(OBJECTS_NAME, "Location_Center_X")
+        positions = sorted(zip(location_center_x, location_center_y))
+        self.assertEqual(2, len(positions))
+
+        self.assertRange(3,18, positions[0][0])
+        self.assertRange(25,45, positions[0][1])
+
+        self.assertRange(20,40, positions[1][0])
+        self.assertRange(5,25, positions[1][1])
+
 
     def test_01_04_test_two_flu_bright_objects(self):
         x = YS.IdentifyYeastCells()
