@@ -214,59 +214,45 @@ class Snake(object):
         @rtype (np.ndarray, np.ndarray)
         @return (smoothed_radius, used_radius_bounds)
         """
-        points_order = range(0, points_number)
         min_angle = radius.argmin()
         istart = min_angle
 
         xmins2 = np.copy(radius)
         xmaxs = np.copy(radius)
 
-        current_iteration = 0
-        ok_points = 0
         changed = True
 
-        while changed:
-            changed = False
-
-            # vertices_order = points_order[min_angle:] + points_order[:min_angle]
-            fixed = 0
-            while ok_points < points_number:
-                if fixed >= points_number and ok_points != 0:
-                    current_iteration += points_number - ok_points
-                    ok_points = points_number
-                    break
-
-                current = (istart + current_iteration) % points_number
-                previous = (current - 1) % points_number
+        def cut_rotate(start, step):
+            last_ok = False
+            iteration = 0
+            any_cut = False
+            while not (iteration >= points_number and last_ok):
+                current = (start + iteration * step) % points_number
+                previous = (current - 1 * step) % points_number
 
                 if xmins2[current] - xmins2[previous] > max_diff[xmins2[previous]]:
                     xmaxs[current] = xmins2[previous] + max_diff[xmins2[previous]]
                     f_tot_slice = f_tot[current, :xmaxs[current] + 1]
                     xmins2[current] = f_tot_slice.argmin()
-                    ok_points = 0
-                    changed = True
+                    if step < 0:
+                        xmins2[current] = max(xmins2[current], xmins2[previous] - max_diff[xmins2[previous]])
+                    last_ok = False
+                    any_cut = True
                 else:
-                    ok_points += 1
+                    last_ok = True
 
-                fixed += 1
-                current_iteration += 1
+                iteration += 1
+            return (start + iteration * step) % points_number, any_cut
 
-            while ok_points > 1:
-                current = (istart + current_iteration) % points_number
-                previous = (current + 1) % points_number
+        current_position = istart
+        while changed:
+            changed = False
 
-                if xmins2[current] - xmins2[previous] > max_diff[xmins2[previous]]:
-                    xmaxs[current] = xmins2[previous] + max_diff[xmins2[previous]]
-                    f_tot_slice = f_tot[current, :xmaxs[current] + 1]
-                    xmins2[current] = max(f_tot_slice.argmin(), xmins2[previous] - max_diff[xmins2[previous]])
-                    ok_points = 0
-                    changed = True
-                else:
-                    ok_points -= 1
+            current_position, any_cut = cut_rotate(current_position, 1)
+            changed = changed or any_cut
 
-                current_iteration += 1
-
-            current_iteration += 1
+            current_position, any_cut = cut_rotate(current_position, -1)
+            changed = changed or any_cut
 
         return xmins2, xmaxs
 
