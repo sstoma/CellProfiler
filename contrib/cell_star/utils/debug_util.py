@@ -118,10 +118,13 @@ def draw_overlay(image, x, y):
 
 def explore_cellstar(cellstar):
     if DEBUGING and EXPLORE:
-        import contrib.cell_star.tests.explorer as exp
-        explorer_ui = exp.ExplorerFrame(images=cellstar.images)
-        explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
-        explorer_ui.ShowModal()
+        try:
+            import contrib.cell_star.tests.explorer as exp
+            explorer_ui = exp.ExplorerFrame(images=cellstar.images)
+            explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
+            explorer_ui.ShowModal()
+        except:
+            pass
 
 
 def draw_snakes_on_axes(snakes, axes, outliers=.1):
