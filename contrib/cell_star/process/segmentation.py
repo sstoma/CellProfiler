@@ -3,6 +3,7 @@ __author__ = 'Adam Kaczmarek, Filip Mróz'
 
 # External imports
 import logging
+import ast
 logger = logging.getLogger(__name__)
 from copy import copy
 import sys
@@ -101,7 +102,7 @@ class Segmentation(object):
         new_stars = copy(self.parameters["segmentation"]["stars"])
         new_ranking = copy(self.parameters["segmentation"]["ranking"])
         try:
-            exec "all_params=" + text
+            all_params = ast.literal_eval(text)
             snake_params = all_params[0]
             rank_params = all_params[1]
             if len(snake_params) != len(snake_auto_params) or len(rank_params) != len(rank_auto_params):

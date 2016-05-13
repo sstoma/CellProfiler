@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 import scipy.ndimage
+import ast
 
 import cellprofiler.cpimage as cpi
 import cellprofiler.measurements as cpmeas
@@ -336,8 +337,8 @@ class test_YeastSegmentation(unittest.TestCase):
         x.average_cell_diameter.value = 5
 
         img = np.zeros((40,40))
-        draw_circle(img, (10,10), 7, .5)
-        draw_circle(img, (30,30), 7, .5)
+        draw_disc(img, (10, 10), 7, .5)
+        draw_disc(img, (30, 30), 7, .5)
         img[10,10] = 0
         img[30,30] = 0
         image = cpi.Image(img, file_name="test_01_06_fill_holes")
@@ -360,8 +361,8 @@ class test_YeastSegmentation(unittest.TestCase):
         x.background_brighter_then_cell_inside.value = False
         x.average_cell_diameter.value = 77
         img = get_two_cell_mask()
-        draw_circle(img,(5,5),2,0.7)
-        draw_circle(img,(35,11),3,0.2)
+        draw_disc(img, (5, 5), 2, 0.7)
+        draw_disc(img, (35, 11), 3, 0.2)
         img = convert_to_brightfield(img, False)
         image = cpi.Image(img, file_name="test_01_07_extreme_params")
         image_set_list = cpi.ImageSetList()
@@ -515,6 +516,60 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertEqual(objects.segmented[25, 25] > 0, 1, "The small object was not there")
         self.assertEqual(objects.segmented[100, 100] > 0, 1, "The large object was not there")
 
+    def test_03_01_simple_fitting(self):
+        x = YS.IdentifyYeastCells()
+        x.object_name.value = OBJECTS_NAME
+
+        x.input_image_name.value = IMAGE_NAME
+        x.segmentation_precision.value = 11
+        x.background_brighter_then_cell_inside.value = False
+        x.average_cell_diameter.value = 30
+
+        img = np.ones((200, 200)) * 0.5
+        draw_brightfield_cell(img, 100, 100, 20, False)
+        draw_brightfield_cell(img, 120, 120, 20, False)
+        draw_brightfield_cell(img, 110, 70, 20, False)
+        draw_disc(img, (100, 100), 20, .55)
+        draw_disc(img, (120, 120), 20, .55)
+        draw_disc(img, (110, 70), 20, .55)
+        img = scipy.ndimage.gaussian_filter(img, 3)
+
+        label = np.zeros((200, 200), dtype=int)
+        draw_disc(label, (100, 100), 20, 1)
+        draw_disc(label, (110, 70), 20, 2)
+
+        image = cpi.Image(img, file_name="test_03_01_simple_fitting")
+        image_set_list = cpi.ImageSetList()
+        image_set = image_set_list.get_image_set(0)
+        image_set.providers.append(cpi.VanillaImageProvider(IMAGE_NAME, image))
+
+        import logging
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        logger = logging.getLogger('contrib.cell_star.parameter_fitting')
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(ch)
+        import wx
+        app = wx.App(0)
+
+        old_params = ast.literal_eval(x.autoadapted_params.value)
+        x.fit_parameters(img, label, x.autoadaptation_steps.value * 2, lambda x: True, lambda y: True)
+        new_params = ast.literal_eval(x.autoadapted_params.value)
+        self.assertNotEqual(old_params[0], new_params[0])
+        self.assertNotEqual(old_params[1], new_params[1])
+
+        # now if we use new parameters option we should find these cells
+        object_set = cpo.ObjectSet()
+        measurements = cpmeas.Measurements()
+        pipeline = cellprofiler.pipeline.Pipeline()
+        x.run(Workspace(pipeline, x, image_set, object_set, measurements, None))
+        objects = object_set.get_objects(OBJECTS_NAME)
+        self.assertLess(objects.segmented.max(), 3, "Not all cells were not found.")
+        self.assertEqual(objects.segmented[100, 100] > 0, 1)
+        self.assertEqual(objects.segmented[120, 120] > 0, 1)
+        self.assertEqual(objects.segmented[110, 70] > 0, 1)
+
+        app.MainLoop()
 
 
 def add_noise(img, fraction):
@@ -526,13 +581,13 @@ def add_noise(img, fraction):
 
 def get_one_cell_mask():
     img = np.zeros((30,30))
-    draw_circle(img,(10,15),5, 1)
+    draw_disc(img, (10, 15), 5, 1)
     return img
 
 def get_two_cell_mask():
     img = np.zeros((50,50))
-    draw_circle(img,(10,35),5,1)
-    draw_circle(img,(30,15),5,1)
+    draw_disc(img, (10, 35), 5, 1)
+    draw_disc(img, (30, 15), 5, 1)
     return img
 
 def convert_to_brightfield(img, content_dark):
@@ -548,11 +603,11 @@ def convert_to_brightfield(img, content_dark):
     return add_noise(img, 0.000)
 
 def draw_brightfield_cell(img,x,y,radius,content_dark=True):
-    draw_circle(img,(x,y),radius+2, .8)
+    draw_disc(img, (x, y), radius + 2, .8)
     if(content_dark):
-        draw_circle(img,(x,y),radius, .3)
+        draw_disc(img, (x, y), radius, .3)
     else:
-        draw_circle(img,(x,y),radius, .6)
+        draw_disc(img, (x, y), radius, .6)
     return img
 
 def convert_to_fluorescent(img, content_dark):
@@ -569,7 +624,7 @@ def is_segmentation_correct(ground_truth, segmentation):
 def are_masks_similar(a, b):
     return 1.0 - (a&b).sum() / float((a|b).sum()) < 0.5
 
-def draw_circle(img,center,radius,value):
+def draw_disc(img, center, radius, value):
     x,y=np.mgrid[0:img.shape[0],0:img.shape[1]]
     distance = np.sqrt((x-center[0])*(x-center[0])+(y-center[1])*(y-center[1]))
     img[distance<=radius]=value

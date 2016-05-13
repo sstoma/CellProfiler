@@ -722,6 +722,77 @@ class IdentifyYeastCells(cpmi.Identify):
 
         return image, image_path, labels
 
+    def fit_parameters(self, input_image, ground_truth_labels, number_of_steps, update_callback, wait_callback):
+        """
+
+        :param wait_callback: function that wait and potentially updates UI
+        :param update_callback: function that take number of steps completed and return if fitting should be continued
+        """
+        keep_going = True
+
+        self.param_fit_progress = 0
+        self.best_snake_score = 10
+        self.best_rank_score = 1000000000
+        aft_active = []
+        adaptations_stopped = False
+        cellstar = self.prepare_cell_star_object(min(11, self.segmentation_precision.value))
+        self.best_parameters = cellstar.parameters
+        self.autoadapted_params.value = cellstar.encode_auto_params()
+
+        try:
+            while (keep_going or not adaptations_stopped) and self.param_fit_progress < number_of_steps:
+                # here put one it. of fitting instead
+                wait_callback(0.5)
+
+                # Thread ended with exception so optimisation have to be stopped.
+                if any(aft_active) and aft_active[0].exception is not None:
+                    break
+
+                # Clean aft_active from dead threads.
+                while any(aft_active) and (not aft_active[0].is_alive() and aft_active[0].started):
+                    aft_active = aft_active[1:]
+
+                # If thread in line start first of them.
+                if any(aft_active) and not aft_active[0].started:
+                    # update parameters which may already be changed
+                    aft_active[0].update_params(self.best_parameters)
+                    aft_active[0].start()
+
+                adaptations_stopped = aft_active == []
+
+                if adaptations_stopped and keep_going and self.param_fit_progress < number_of_steps:
+                    aft_active.append(
+                        AutoFitterThread(run_pf, self.update_snake_params, input_image, ground_truth_labels,
+                                         self.best_parameters,
+                                         self.segmentation_precision.value, self.average_cell_diameter.value))
+
+                    aft_active.append(
+                        AutoFitterThread(run_rank_pf, self.update_rank_params, input_image, ground_truth_labels,
+                                         self.best_parameters))
+
+                # here update params. in the GUI
+                keep_going_update = update_callback(self.param_fit_progress)
+                keep_going = keep_going and keep_going_update
+
+        finally:
+            update_callback(number_of_steps)
+
+    def fit_parameters_with_ui(self, input_image, ground_truth_labels):
+        import wx
+
+        # reading GT from dialog_box.labels[0] and image from self.pixel
+        progress_max = self.autoadaptation_steps.value * 2  # every step consists of: snake params and ranking params fitting
+
+        with wx.ProgressDialog("Fitting parameters..", "Iterations remaining", progress_max,
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME) as dialog:
+            def update(steps):
+                return dialog.Update(steps)[0]
+
+            def wait(time):
+                return wx.Sleep(time)
+
+            self.fit_parameters(input_image, ground_truth_labels, progress_max, update, wait)
+
     def ground_truth_editor( self ):
         '''Display a UI for GT editing'''
         from cellprofiler.gui.editobjectsdlg import EditObjectsDialog
@@ -780,7 +851,6 @@ class IdentifyYeastCells(cpmi.Identify):
             self.pixel_data = self.pixel_data - background_pixels
         ## end of image adaptation
 
-        # TODO think what to do if the user chooses new image (and we load old cells)
         if labels is None or not labels.any():
             edit_labels = [np.zeros(self.pixel_data.shape[:2], int)]
 
@@ -811,58 +881,7 @@ class IdentifyYeastCells(cpmi.Identify):
             dlg.Destroy()
             return
 
-        ### fitting params 
-        # reading GT from dialog_box.labels[0] and image from self.pixel
-        progress_max = self.autoadaptation_steps.value * 2  # every step consists of: snake params and ranking params fitting
-
-        with wx.ProgressDialog("Fitting parameters..", "Iterations remaining", progress_max,
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME) as dialog:
-            keep_going = True
-
-            self.param_fit_progress = 0
-            self.best_snake_score = 10
-            self.best_rank_score = 1000000000
-            aft_active = []
-            adaptations_stopped = False
-            cellstar = self.prepare_cell_star_object(min(11, self.segmentation_precision.value))
-            self.best_parameters = cellstar.parameters
-            self.autoadapted_params.value = cellstar.encode_auto_params()
-
-            try:
-                while (keep_going or not adaptations_stopped) and self.param_fit_progress < progress_max:
-                    # here put one it. of fitting instead
-                    wx.Sleep(0.5)
-
-                    # Thread ended with exception so optimisation have to be stopped.
-                    if any(aft_active) and aft_active[0].exception is not None:
-                        break
-
-                    # Clean aft_active from dead threads.
-                    while any(aft_active) and (not aft_active[0].is_alive() and aft_active[0].started):
-                        aft_active = aft_active[1:]
-
-                    # If thread in line start first of them.
-                    if any(aft_active) and not aft_active[0].started:
-                        # update parameters which may already be changed
-                        aft_active[0].update_params(self.best_parameters)
-                        aft_active[0].start()
-
-                    adaptations_stopped = aft_active == []
-
-                    if adaptations_stopped and keep_going and self.param_fit_progress < progress_max:
-                        aft_active.append(
-                            AutoFitterThread(run_pf, self.update_snake_params, image, labels, self.best_parameters,
-                                     self.segmentation_precision.value, self.average_cell_diameter.value))
-
-                        aft_active.append(
-                            AutoFitterThread(run_rank_pf, self.update_rank_params, image, labels, self.best_parameters))
-
-                    # here update params. in the GUI
-                    keep_going_update = dialog.Update(self.param_fit_progress)[0]
-                    keep_going = keep_going and keep_going_update
-
-            finally:
-                dialog.Update(progress_max)
+        self.fit_parameters_with_ui(image, labels)
 
     def update_snake_params(self, new_parameters, new_snake_score):
         if new_snake_score < self.best_snake_score:

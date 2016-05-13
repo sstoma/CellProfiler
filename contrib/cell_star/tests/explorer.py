@@ -74,7 +74,7 @@ class Explorer:
             elif key == '1':
                 self.smoothing = self.cell_star_smoothing
             elif key == '2':
-                self.smoothing = smooth_contour_tidy
+                self.smoothing = smooth_contour_new_max
             elif key == '3':
                 self.smoothing = smooth_contour_turns
             Snake.smooth_contour = self.smoothing
