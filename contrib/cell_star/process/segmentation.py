@@ -71,7 +71,7 @@ class Segmentation(object):
         self.images = ImageRepo(frame, self.parameters)
         # One background per whole segmentation
         if prev_background is not None:
-            self.set_background(prev_background)
+            self.images.background = prev_background
         # Update image dimensions parameter
         try:
             self.parameters["segmentation"]["transform"]["originalImDim"] = frame.shape
@@ -239,7 +239,7 @@ class Segmentation(object):
         debug_util.explore_cellstar(self)
         for step in range(self.parameters["segmentation"]["steps"]):
             self.run_one_step(step)
-        # image_util.image_show(self.images.image + (self.images.segmentation > 0), 1)
+        # debug_util.image_show(self.images.image + (self.images.segmentation > 0), 1, override=True)
         return self.images.segmentation, self.snakes
 
     def formatted_result(self, result_format):

@@ -90,13 +90,13 @@ def image_save(image, title):
         return file_path
     return None
 
-def image_show(image, title):
+def image_show(image, title, override=False):
     """
     Displays image with title using matplotlib.pyplot
     @param image:
     @param title:
     """
-    if DEBUGING and SHOW:
+    if DEBUGING and (SHOW or override):
         prepare_debug_folder()
         fig = plt.figure(title)
         plt.imshow(image, cmap=plt.cm.gray, interpolation='none')

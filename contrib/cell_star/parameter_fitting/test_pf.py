@@ -8,7 +8,6 @@ import numpy as np
 import scipy as sp
 
 from cellprofiler.preferences import get_max_workers
-from contrib.cell_star.config.config import default_config
 from contrib.cell_star.parameter_fitting.pf_process import run, test_trained_parameters
 from contrib.cell_star.parameter_fitting.pf_snake import GTSnake
 from contrib.cell_star.utils import image_util, debug_util
@@ -54,17 +53,7 @@ def try_load_image(image_path):
     return image_util.load_frame(corpus_path, image_path)
 
 
-def cropped_to_gt(avg_cell_diameter, image, gt_image):
-    gt_label = image_to_label(gt_image)
-
-    gt_slices = sp.ndimage.find_objects(gt_label > 0)[0]
-    #extended_slice = image_util.extend_slices(gt_slices, avg_cell_diameter * default_config()["segmentation"]["stars"]["maxSize"] * 4)
-    extended_slice = image_util.extend_slices(gt_slices, 5000)  # No cropping!
-    cropped_image = image[extended_slice]
-    cropped_gt_label = gt_label[extended_slice]
-    return cropped_image, cropped_gt_label
-
-def run_pf(input_image, gt_label, parameters, precision, avg_cell_diameter):
+def run_pf(input_image, background_image, ignore_mask_image, gt_label, parameters, precision, avg_cell_diameter):
     """
     :param input_image:
     :param gt_label:
@@ -72,13 +61,19 @@ def run_pf(input_image, gt_label, parameters, precision, avg_cell_diameter):
     :return: Best complete parameters settings, best distance
     """
 
-    croped_image, croped_gt_mask = cropped_to_gt(avg_cell_diameter, input_image, gt_label)
+    gt_mask = image_to_label(gt_label)
 
-    gt_snakes = gt_label_to_snakes(croped_gt_mask)
+    gt_snakes = gt_label_to_snakes(gt_mask)
     if get_max_workers() > 1:
-        best_complete_params, _, best_score = run(croped_image, gt_snakes, precision=precision, avg_cell_diameter=avg_cell_diameter, initial_params=parameters, method='mp')
+        best_complete_params, _, best_score = run(input_image, gt_snakes, precision=precision,
+                                                  avg_cell_diameter=avg_cell_diameter, initial_params=parameters,
+                                                  method='mp', background_image=background_image,
+                                                  ignore_mask=ignore_mask_image)
     else:
-        best_complete_params, _, best_score = run(croped_image, gt_snakes, precision=precision, avg_cell_diameter=avg_cell_diameter, initial_params=parameters, method='brutemaxbasin')
+        best_complete_params, _, best_score = run(input_image, gt_snakes, precision=precision,
+                                                  avg_cell_diameter=avg_cell_diameter, initial_params=parameters,
+                                                  method='brutemaxbasin', background_image=background_image,
+                                                  ignore_mask=ignore_mask_image)
 
     return best_complete_params, best_score
 
@@ -87,10 +82,10 @@ def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial
     frame = try_load_image(image_path)
     gt_image = np.array(try_load_image(mask_path) * 255, dtype=int)
 
-    cropped_image, cropped_gt_label = cropped_to_gt(avg_cell_diameter, frame, gt_image)
+    gt_mask = image_to_label(gt_image)
 
-    gt_snakes = gt_label_to_snakes(cropped_gt_label)
-    return run(cropped_image, gt_snakes, precision, avg_cell_diameter, method, initial_params=initial_params)
+    gt_snakes = gt_label_to_snakes(gt_mask)
+    return run(frame, gt_snakes, precision, avg_cell_diameter, method, initial_params=initial_params)
 
 
 def test_parameters(image_path, mask_path, precision, avg_cell_diameter, params, output_path=None):

@@ -23,6 +23,10 @@ class ImageRepo(object):
 
         return self._background
 
+    @background.setter
+    def background(self, new_background):
+        self._background = new_background
+
     @property
     def brighter(self):
         if self._brighter is None:

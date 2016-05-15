@@ -129,7 +129,7 @@ def test_trained_parameters(image, star_params, precision, avg_cell_diameter, ou
 #
 #
 
-def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_params=None):
+def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_params=None, background_image=None, ignore_mask=None):
     global best_3
     """
     :param image: input image
@@ -146,6 +146,9 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
     else:
         params = copy.deepcopy(initial_params)
     images = ImageRepo(image, params)
+    images.background = background_image
+    if ignore_mask is not None:
+        images.apply_mask(ignore_mask)
 
     start = time.clock()
     best_3 = []

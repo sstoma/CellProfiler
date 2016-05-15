@@ -95,9 +95,9 @@ def add_mutations(gt_and_grown):
 #
 #
 
-def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, method='brute', initial_params=None):
+def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, method='brute', initial_params=None,
+                     background_image=None, ignore_mask=None):
     """
-    :param image: input image
     :param gt_snakes: gt snakes label image
     :param precision: if initial_params is None then it is used to calculate parameters
     :param avg_cell_diameter: if initial_params is None then it is used to calculate parameters
@@ -113,7 +113,7 @@ def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, metho
         params = copy.deepcopy(initial_params)
 
     start = time.clock()
-    best_params, distance = multiproc_optimize(image, gt_snakes, method, params)
+    best_params, distance = multiproc_optimize((image, background_image, ignore_mask), gt_snakes, method, params)
     best_params_full = PFRankSnake.merge_rank_parameters(params, best_params)
     stop = time.clock()
 
@@ -122,10 +122,10 @@ def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, metho
     logger.info("Ranking parameter fitting (mp) finished with best score %f" % distance)
     return best_params_full, best_params, distance
 
-def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, method='brute', initial_params=None):
-    global calculations
+
+def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, method='brute', initial_params=None,
+                      background_image=None, ignore_mask=None):
     """
-    :param image: input image
     :param gt_snakes: gt snakes label image
     :param precision: if initial_params is None then it is used to calculate parameters
     :param avg_cell_diameter: if initial_params is None then it is used to calculate parameters
@@ -133,6 +133,7 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     :param initial_params: overrides precision and avg_cell_diameter
     :return:
     """
+    global calculations
     logger.info("Ranking parameter fitting started...")
 
     if initial_params is None:
@@ -143,6 +144,9 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     start = time.clock()
 
     images = ImageRepo(image, params)
+    images.background = background_image
+    if ignore_mask is not None:
+        images.apply_mask(ignore_mask)
 
     # prepare seed and grow snakes
     encoded_star_params = pf_parameters_encode(params)
@@ -176,6 +180,7 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     logger.info("Ranking parameter fitting finished with best score %f" % distance)
     return best_params_full, best_params, distance
 
+
 #
 #
 #   OPTIMISATION METHODS
@@ -200,8 +205,8 @@ def optimize(method_name, encoded_params, distance_function):
     else:
         return best_params_encoded, distance
 
-def optimize_brute(params_to_optimize, distance_function):
 
+def optimize_brute(params_to_optimize, distance_function):
     lower_bound = np.zeros(len(params_to_optimize), dtype=float)
     upper_bound = np.ones(len(params_to_optimize), dtype=float)
 
@@ -223,12 +228,12 @@ def optimize_brute(params_to_optimize, distance_function):
     return result[0], result[1]
 
 
-
 def optimize_basinhopping(params_to_optimize, distance_function):
     minimizer_kwargs = {"method": "COBYLA"}
     result = opt.basinhopping(distance_function, params_to_optimize, minimizer_kwargs=minimizer_kwargs, niter=200)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
+
 
 #
 #
@@ -236,17 +241,18 @@ def optimize_basinhopping(params_to_optimize, distance_function):
 #
 #
 
-def run_wrapper(queue, image, gt_snakes, method, params):
+def run_wrapper(queue, images, gt_snakes, method, params):
     random.seed()  # reseed with random
-    result = run_singleprocess(image, gt_snakes, method, initial_params=params)
+    result = run_singleprocess(images[0], gt_snakes, method, initial_params=params, background_image=images[1],
+                               ignore_mask=images[2])
     queue.put(result)
 
 
-def multiproc_optimize(image, gt_snakes, method='brute', initial_params=None):
+def multiproc_optimize(images, gt_snakes, method='brute', initial_params=None):
     result_queue = Queue()
     workers_num = get_max_workers()
     optimizers = [
-        Process(target=run_wrapper, args=(result_queue, image, gt_snakes, method, initial_params)) for _ in range(workers_num)]
+        Process(target=run_wrapper, args=(result_queue, images, gt_snakes, method, initial_params)) for _ in range(workers_num)]
 
     for optimizer in optimizers:
         optimizer.start()

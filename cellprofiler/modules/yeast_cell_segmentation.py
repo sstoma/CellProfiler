@@ -563,6 +563,7 @@ class IdentifyYeastCells(cpmi.Identify):
         self.current_workspace = workspace
         image_set = workspace.image_set
 
+        # load input
         input_image = image_set.get_image(input_image_name, must_be_grayscale=True)
         self.input_image_file_name = input_image.file_name
         input_pixels = input_image.pixel_data
@@ -573,7 +574,7 @@ class IdentifyYeastCells(cpmi.Identify):
             ignore_mask_image = image_set.get_image(self.ignore_mask_image_name)
             ignore_mask_pixels = ignore_mask_image.pixel_data > 0
 
-        # Load previously computed background.
+        # load previously computed background.
         if self.background_elimination_strategy == BKG_FILE:
             background_pixels = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
         elif self.background_elimination_strategy == BKG_FIRST:  # TODO make it happen
@@ -581,30 +582,12 @@ class IdentifyYeastCells(cpmi.Identify):
         else:
             background_pixels = None
 
-        # Invert images if required.
-        if not self.background_brighter_then_cell_inside:
-            input_pixels = 1 - input_pixels
-            if self.background_elimination_strategy == BKG_FILE:
-                background_pixels = 1 - background_pixels
-
-        # support for fluorescent images
-        # here it is design question: we assume that the user *should* say
-        # truth about background and inside of cells: insides are brighter
-        # than background (so the bkg and image for fluorescent will be 
-        # inverted at this stage)
-        if not self.bright_field_image:
-            sigma = 4  # TODO think if it is a big problem to hardcode it here
-            size = int(sigma * 4) + 1
-            mask = np.ones(input_pixels.shape, bool)
-            edge_pixels = laplacian_of_gaussian(input_pixels, mask, size, sigma)
-            factor = 10  # TODO think if hardcoded is fine
-            input_pixels = np.subtract(input_pixels, factor * edge_pixels)
-
+        self.current_workspace.display_data.input_pixels = input_pixels
 
         #
         # Preprocessing
         #
-        input_pixels, background_pixels = self.preprocessing(input_pixels, background_pixels)
+        input_pixels, background_pixels, ignore_mask_pixels = self.preprocess_images(input_pixels, background_pixels, ignore_mask_pixels)
 
         #
         # Segmentation
@@ -636,14 +619,6 @@ class IdentifyYeastCells(cpmi.Identify):
         cpmi.add_object_count_measurements(workspace.measurements,
                                            self.object_name.value, np.max(objects.segmented))
 
-    def preprocessing(self, input_pixels, background_pixels):
-        self.current_workspace.display_data.input_pixels = input_pixels
-
-        if background_pixels is not None:
-            background_pixels = background_pixels.astype(float)
-
-        return input_pixels.astype(float), background_pixels
-
     def prepare_cell_star_object(self, segmentation_precision):
         cellstar = Segmentation(segmentation_precision, self.average_cell_diameter.value)
         cellstar.parameters["segmentation"]["maxOverlap"] = self.maximal_cell_overlap.value
@@ -664,6 +639,29 @@ class IdentifyYeastCells(cpmi.Identify):
         if not success:  # if current value is invalid overwrite it with current settings
             self.autoadapted_params.value = cellstar.encode_auto_params()
         return cellstar
+
+    def preprocess_images(self, input_image, background_image, ignore_mask):
+        # Invert images if required.
+        if not self.background_brighter_then_cell_inside:
+            input_image = 1 - input_image
+            if background_image is not None:
+                background_image = 1 - background_image
+
+        # support for fluorescent images
+        # here it is design question: we assume that the user *should* say
+        # truth about background and inside of cells: insides are brighter
+        # than background (so the bkg and image for fluorescent will be
+        # inverted at this stage)
+        if not self.bright_field_image: # TODO what about background?
+            # TODO exception will be thrown if orig image is not 1 channel...
+            sigma = 4  # TODO think if it is a big problem to hardcode it here
+            size = int(sigma * 4) + 1
+            mask = np.ones(input_image.shape, bool)
+            edge_pixels = laplacian_of_gaussian(input_image, mask, size, sigma)
+            factor = 10  # TODO think if hardcoded is fine
+            input_image = np.subtract(input_image, factor * edge_pixels)
+
+        return input_image, background_image, ignore_mask
 
     #
     # Segmentation of the image into yeast cells.
@@ -697,32 +695,8 @@ class IdentifyYeastCells(cpmi.Identify):
 
         return objects, np.array(raw_qualities), cellstar.images.background
 
-    def get_ground_truth_input_images(self):
-        import wx
-        labels = None
-        image_path = None
-        with wx.FileDialog(None,
-                            message = "Open an image file",
-                            wildcard = "Image file (*.tif,*.tiff,*.jpg,*.jpeg,*.png,*.gif,*.bmp)|*.tif;*.tiff;*.jpg;*.jpeg;*.png;*.gif;*.bmp|*.* (all files)|*.*",
-                            style = wx.FD_OPEN) as dlg:
-            if dlg.ShowModal() == wx.ID_OK:
-                from bioformats import load_image
-                image_path = dlg.Path
-                image = load_image(image_path)
-                # if colour then go to grayscale
-                # make sure that it is done the same way as in general CellProfiler flow
-                if image.ndim == 3:
-                    image = np.sum(image, 2) / image.shape[2]
-
-                label_path = dlg.Path + ".lab.png"  # if file attached load labels from file
-                if isfile(label_path):
-                    labels = (load_image(label_path) * 255).astype(int)
-            else:
-                return None
-
-        return image, image_path, labels
-
-    def fit_parameters(self, input_image, ground_truth_labels, number_of_steps, update_callback, wait_callback):
+    def fit_parameters(self, input_image, background_image, ignore_mask_image, ground_truth_labels, number_of_steps,
+                       update_callback, wait_callback):
         """
 
         :param wait_callback: function that wait and potentially updates UI
@@ -762,12 +736,14 @@ class IdentifyYeastCells(cpmi.Identify):
 
                 if adaptations_stopped and keep_going and self.param_fit_progress < number_of_steps:
                     aft_active.append(
-                        AutoFitterThread(run_pf, self.update_snake_params, input_image, ground_truth_labels,
+                        AutoFitterThread(run_pf, self.update_snake_params,
+                                         input_image, background_image, ignore_mask_image, ground_truth_labels,
                                          self.best_parameters,
                                          self.segmentation_precision.value, self.average_cell_diameter.value))
 
                     aft_active.append(
-                        AutoFitterThread(run_rank_pf, self.update_rank_params, input_image, ground_truth_labels,
+                        AutoFitterThread(run_rank_pf, self.update_rank_params,
+                                         input_image, background_image, ignore_mask_image, ground_truth_labels,
                                          self.best_parameters))
 
                 # here update params. in the GUI
@@ -777,7 +753,7 @@ class IdentifyYeastCells(cpmi.Identify):
         finally:
             update_callback(number_of_steps)
 
-    def fit_parameters_with_ui(self, input_image, ground_truth_labels):
+    def fit_parameters_with_ui(self, input_image, background_image, ignore_mask_image, ground_truth_labels):
         import wx
 
         # reading GT from dialog_box.labels[0] and image from self.pixel
@@ -791,7 +767,70 @@ class IdentifyYeastCells(cpmi.Identify):
             def wait(time):
                 return wx.Sleep(time)
 
-            self.fit_parameters(input_image, ground_truth_labels, progress_max, update, wait)
+            self.fit_parameters(input_image, background_image, ignore_mask_image, ground_truth_labels, progress_max, update, wait)
+
+    def get_param_fitting_input_images(self):
+        import wx
+        from bioformats import load_image
+
+        def get_file_path(message):
+            with wx.FileDialog(None,
+                               message=message,
+                               wildcard="Image file (*.tif,*.tiff,*.jpg,*.jpeg,*.png,*.gif,*.bmp)|*.tif;*.tiff;*.jpg;*.jpeg;*.png;*.gif;*.bmp|*.* (all files)|*.*",
+                               style=wx.FD_OPEN) as dlg:
+                if dlg.ShowModal() == wx.ID_OK:
+                    return dlg.Path
+                else:
+                    return None
+
+        def load_image_grayscale(path):
+            image = load_image(path)
+            if image.ndim == 3:
+                image = np.sum(image, 2) / image.shape[2]
+            return image
+
+        input_image = None
+        background_image = None
+        ignore_mask = None
+        labels = None
+
+        background_needed = self.background_elimination_strategy == BKG_FILE
+        ignore_mask_needed = self.ignore_mask_image_name.value != cps.LEAVE_BLANK
+
+        message = "In order to autoadapt parameters you need to provide:\n- input image"
+        if background_needed:
+            message += "\n- background image"
+
+        if ignore_mask_needed:
+            message += "\n- ignore mask image"
+
+        with wx.MessageDialog(None, message, "Select images for autoadapt", wx.OK | wx.ICON_INFORMATION) as dlg:
+            dlg.ShowModal()
+
+        input_image_path = get_file_path("Select sample input image")
+        if input_image_path is None:
+            return None
+        else:
+            input_image = load_image_grayscale(input_image_path)
+            label_path = input_image_path + ".lab.png"  # if file attached load labels from file
+            if isfile(label_path):
+                labels = (load_image_grayscale(label_path) * 255).astype(int)
+
+        if background_needed:
+            background_image_path = get_file_path("Select background image")
+            if background_image_path is None:
+                return None
+            else:
+                background_image = load_image_grayscale(background_image_path)
+
+        if ignore_mask_needed:
+            ignore_mask_path = get_file_path("Select ignore mask image")
+            if ignore_mask_path is None:
+                return None
+            else:
+                ignore_mask = load_image_grayscale(ignore_mask_path) > 0
+
+        return input_image, background_image, ignore_mask, labels
 
     def ground_truth_editor( self ):
         '''Display a UI for GT editing'''
@@ -799,70 +838,30 @@ class IdentifyYeastCells(cpmi.Identify):
         from wx import OK
         import wx
 
-        ### opening file dialog
-        input_data = self.get_ground_truth_input_images()
+        ### opening file dialogs
+        input_data = self.get_param_fitting_input_images()
         if input_data is None:
             return
-        image, image_path, labels = input_data
+        input_image, background_image, ignore_mask, labels = input_data
 
         ### opening GT editor
         title = "Please mark few representative cells to allow for autoadapting parameters. \n"
         title += " \n"
         title += 'Press "F" to being freehand drawing.\n'
         title += "Click Help for full instructions."
-        self.pixel_data = image
-
-        ## now we need to do same operation we will do invisibely based on user resposnes
-        # Load previously computed background.
-        if self.background_elimination_strategy == BKG_FILE:
-            try:
-                background_pixels = image_set.get_image(self.background_image_name.value,
-                                                        must_be_grayscale=True).pixel_data
-            except Exception:
-                dlg = wx.MessageDialog(None,
-                                       "Please load background file first (or switch to different method of background elimination)!",
-                                       "Warning!", wx.OK | wx.ICON_WARNING)
-                dlg.ShowModal()
-                dlg.Destroy()
-                return
-
-        elif self.background_elimination_strategy == BKG_FIRST: #TODO make it happen
-            background_pixels = self.__get(F_BACKGROUND, workspace, None)
-        else:
-            background_pixels = None
-
-        # Invert images if required.
-        if not self.background_brighter_then_cell_inside:
-            self.pixel_data = 1 - self.pixel_data
-            if self.background_elimination_strategy == BKG_FILE:
-                background_pixels = 1 - background_pixels
-
-        # adapt the fluorescent image if req.
-        if not self.bright_field_image:
-            # TODO exception will be thrown if orig image is not 1 channel...
-            sigma = 4 # TODO think if it is a big problem to hardcode it here
-            size = int(sigma * 4)+1
-            mask = np.ones(self.pixel_data.shape, bool)
-            edge_pixels = laplacian_of_gaussian(self.pixel_data, mask, size, sigma)
-            factor = 10 # TODO think if hardcoded is fine
-            self.pixel_data = np.subtract(self.pixel_data, factor*edge_pixels)
-
-        if background_pixels is not None:
-            self.pixel_data = self.pixel_data - background_pixels
-        ## end of image adaptation
 
         if labels is None or not labels.any():
-            edit_labels = [np.zeros(self.pixel_data.shape[:2], int)]
+            edit_labels = [np.zeros(input_image.shape[:2], int)]
 
             if getattr(self, "last_labeling", None) is not None:
-                if self.last_labeling[0] == image_path:
+                if self.last_labeling[0] == hash(abs(np.sum(input_image))):
                     edit_labels = [self.last_labeling[1]]
 
             ## two next lines are hack from Lee
             edit_labels[0][0, 0] = 1
             edit_labels[0][-2, -2] = 1
             with EditObjectsDialog(
-                    self.pixel_data, edit_labels, False, title) as dialog_box:
+                    input_image, edit_labels, False, title) as dialog_box:
                 result = dialog_box.ShowModal()
                 if result != OK:
                     return None
@@ -871,17 +870,20 @@ class IdentifyYeastCells(cpmi.Identify):
             labels[0, 0] = 0
             labels[-2, -2] = 0
 
-            self.last_labeling = (image_path, labels)
+            self.last_labeling = (hash(abs(np.sum(input_image))), labels)
 
         # check if the user provided GT
         # TODO check for con. comp. and e.g. let it go if more then 3 cells were added
         if not labels.any():
-            dlg = wx.MessageDialog(None, "Please correctly select at least one cell. Otherwise, parameters can not be autoadapted!", "Warning!", wx.OK | wx.ICON_WARNING)
-            dlg.ShowModal()
-            dlg.Destroy()
+            with wx.MessageDialog(None,
+                                  "Please correctly select at least one cell. Otherwise, parameters can not be autoadapted!",
+                                  "Warning!", wx.OK | wx.ICON_WARNING) as dlg:
+                dlg.ShowModal()
             return
 
-        self.fit_parameters_with_ui(image, labels)
+        input_processed, background_processed, ignore_mask_processed = self.preprocess_images(input_image, background_image, ignore_mask)
+
+        self.fit_parameters_with_ui(input_processed, background_processed, ignore_mask_processed, labels)
 
     def update_snake_params(self, new_parameters, new_snake_score):
         if new_snake_score < self.best_snake_score:
@@ -918,7 +920,7 @@ class AutoFitterThread(threading.Thread):
         pass
 
     def update_params(self, new_params):
-        self._args[2] = new_params
+        self._args[4] = new_params
 
     def run(self):
         try:

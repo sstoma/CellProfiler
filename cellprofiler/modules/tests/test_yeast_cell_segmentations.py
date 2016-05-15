@@ -13,11 +13,11 @@ Filip Mroz, Adam Kaczmarek, Szymon Stoma.
 Website: http://www.cellprofiler.org
 """
 
+import ast
 import unittest
 
 import numpy as np
 import scipy.ndimage
-import ast
 
 import cellprofiler.cpimage as cpi
 import cellprofiler.measurements as cpmeas
@@ -83,6 +83,13 @@ class test_YeastSegmentation(unittest.TestCase):
 
     def test_00_00_init(self):
         x = YS.IdentifyYeastCells()
+
+
+    def test_00_01_image_loading_equivalence(self):
+        # TODO test if image read with CP pipeline and by yeast_segmentation internals are the same
+        # save image and load it using both methods
+        # check png, tiff 8/16
+        self.fail("TODO")
         
     def test_01_00_test_zero_objects(self):
         x = YS.IdentifyYeastCells()
@@ -517,11 +524,13 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertEqual(objects.segmented[100, 100] > 0, 1, "The large object was not there")
 
     def test_03_01_simple_fitting(self):
+        np.random.seed(1)
         x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
 
         x.input_image_name.value = IMAGE_NAME
-        x.segmentation_precision.value = 11
+        x.segmentation_precision.value = 9  # so that it is faster for fitting
+        x.maximal_cell_overlap.value = 0.4
         x.background_brighter_then_cell_inside.value = False
         x.average_cell_diameter.value = 30
 
@@ -529,9 +538,10 @@ class test_YeastSegmentation(unittest.TestCase):
         draw_brightfield_cell(img, 100, 100, 20, False)
         draw_brightfield_cell(img, 120, 120, 20, False)
         draw_brightfield_cell(img, 110, 70, 20, False)
-        draw_disc(img, (100, 100), 20, .55)
-        draw_disc(img, (120, 120), 20, .55)
-        draw_disc(img, (110, 70), 20, .55)
+        draw_disc(img, (100, 100), 20, .65)
+        draw_disc(img, (120, 120), 20, .65)
+        draw_disc(img, (110, 70), 20, .65)
+        img = img + np.random.normal(3., 0.01, img.shape)
         img = scipy.ndimage.gaussian_filter(img, 3)
 
         label = np.zeros((200, 200), dtype=int)
@@ -543,33 +553,31 @@ class test_YeastSegmentation(unittest.TestCase):
         image_set = image_set_list.get_image_set(0)
         image_set.providers.append(cpi.VanillaImageProvider(IMAGE_NAME, image))
 
-        import logging
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        logger = logging.getLogger('contrib.cell_star.parameter_fitting')
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(ch)
-        import wx
-        app = wx.App(0)
-
         old_params = ast.literal_eval(x.autoadapted_params.value)
-        x.fit_parameters(img, label, x.autoadaptation_steps.value * 2, lambda x: True, lambda y: True)
+        input_processed, background_processed, ignore_mask_processed = x.preprocess_images(img, None, None)
+        x.fit_parameters(input_processed, background_processed, ignore_mask_processed, label,
+                         x.autoadaptation_steps.value * 2, lambda x: True, lambda y: True)
         new_params = ast.literal_eval(x.autoadapted_params.value)
         self.assertNotEqual(old_params[0], new_params[0])
         self.assertNotEqual(old_params[1], new_params[1])
+
+        #x.autoadapted_params.value = "[[16.282366833092343, -12.278185398879907, 608.72017238611102, 17.441635091145478, 203.32510436137059, 7.1180878616033336], [1214.4324725382576, 2367.3881652432678, 216.10299086636189, 2620.6127639758142, 523.98667591841763]]"
 
         # now if we use new parameters option we should find these cells
         object_set = cpo.ObjectSet()
         measurements = cpmeas.Measurements()
         pipeline = cellprofiler.pipeline.Pipeline()
+        x.segmentation_precision.value = 13
         x.run(Workspace(pipeline, x, image_set, object_set, measurements, None))
         objects = object_set.get_objects(OBJECTS_NAME)
-        self.assertLess(objects.segmented.max(), 3, "Not all cells were not found.")
-        self.assertEqual(objects.segmented[100, 100] > 0, 1)
-        self.assertEqual(objects.segmented[120, 120] > 0, 1)
-        self.assertEqual(objects.segmented[110, 70] > 0, 1)
 
-        app.MainLoop()
+        self.assertEqual(objects.segmented[100, 100], 3)
+        self.assertEqual(objects.segmented[120, 120], 1)
+        self.assertEqual(objects.segmented[110, 70], 2)
+
+    def test_03_02_fitting_background_masked(self):
+        # Test if ignore and background can be used in fitting process (without it it should fade)
+        self.fail("TODO")
 
 
 def add_noise(img, fraction):
