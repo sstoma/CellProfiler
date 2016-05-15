@@ -118,13 +118,18 @@ def draw_overlay(image, x, y):
 
 def explore_cellstar(cellstar):
     if DEBUGING and EXPLORE:
+        value = 0
         try:
             import contrib.cell_star.tests.explorer as exp
             explorer_ui = exp.ExplorerFrame(images=cellstar.images)
             explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
-            explorer_ui.ShowModal()
+            value = explorer_ui.ShowModal()
         except:
             pass
+
+        if value == exp.ExplorerFrame.ABORTED:
+            raise Exception("Execution aborted")
+
 
 
 def draw_snakes_on_axes(snakes, axes, outliers=.1):

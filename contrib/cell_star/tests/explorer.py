@@ -93,6 +93,7 @@ class Explorer:
 
 
 class ExplorerFrame(wx.Dialog):
+    ABORTED = -1
     def __init__(self, images, parent=None, id=wx.ID_ANY, title='CellStar explorer', x=900, y=600):
         """
         @type images: ImageRepo
@@ -106,6 +107,7 @@ class ExplorerFrame(wx.Dialog):
         self.canvas = Canvas(self, -1, self.figure)
         self.toolbar = Toolbar(self.canvas)
         self.toolbar.Realize()
+        self.abort = False
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.canvas, 1, wx.EXPAND)
@@ -127,6 +129,8 @@ class ExplorerFrame(wx.Dialog):
 
         def press_internal(event):
             print('press', event.key)
+            if event.key == 'b':  # abort
+                self.EndModal(ExplorerFrame.ABORTED)
             if event.key in 'qwerxcv':
                 self.layer0.remove()
                 if event.key == 'q':  # input
