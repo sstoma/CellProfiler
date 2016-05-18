@@ -604,7 +604,7 @@ class IdentifyYeastCells(cpmi.Identify):
         outline_image = cellprofiler.cpmath.outline.outline(objects.segmented)
         if self.should_save_outlines.value:
             out_img = cpi.Image(outline_image.astype(bool),
-                                parent_image = input_pixels)
+                                parent_image = input_image)
             workspace.image_set.add(self.save_outlines.value, out_img)
 
         # Save measurements
