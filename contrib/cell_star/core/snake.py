@@ -193,7 +193,8 @@ class Snake(object):
         # Create contour points list
         #
 
-        final_radius = np.minimum(np.maximum(np.round(smoothed_radius + 1), 1), max_r - 1)
+        final_radius = np.minimum(np.maximum(smoothed_radius, 1), max_r - 1)
+        #final_radius = np.minimum(np.maximum(np.round(smoothed_radius + 1), 1), max_r - 1)
 
         px = self.seed.x + step * final_radius * np.cos(t.T)
         py = self.seed.y + step * final_radius * np.sin(t.T)

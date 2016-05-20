@@ -10,7 +10,6 @@ import math
 
 import numpy as np
 import scipy.ndimage as sp_image
-from matplotlib.path import Path
 
 from index import Index
 
@@ -157,24 +156,6 @@ def get_gradient(im, index, border_thickness_steps):
     return gradients_for_steps.max(axis=max_gradient_along_axis)
 
 
-def get_polygon_path(polygon_x, polygon_y):
-    vertices = zip(list(polygon_x) + [polygon_x[0]], list(polygon_y) + [polygon_y[0]])
-    codes = [Path.MOVETO] + [Path.LINETO] * (len(vertices) - 2) + [Path.CLOSEPOLY]
-    p = Path(vertices, codes)
-    return p
-
-
-def get_in_polygon(x1, x2, y1, y2, path):
-    x, y = np.meshgrid(np.arange(x1, x2), np.arange(y1, y2))
-    x, y = x.flatten(), y.flatten()
-    pts = np.vstack((x, y)).T
-
-    # Find points that belong to snake in minimal rectangle
-    grid = path.contains_points(pts)
-    grid = grid.reshape(y2 - y1, x2 - x1)
-    return grid
-
-
 def inslice_point(point_yx_in_slice, slices):
     y = point_yx_in_slice[0]
     x = point_yx_in_slice[1]
@@ -206,21 +187,34 @@ def polar_to_cartesian(polar_coordinate_boundary, origin_x, origin_y, polar_tran
 
     return px, py
 
+def mask_with_pil(ys, xs, yslice, xslice):
+    from PIL import Image
+    rxs = np.round(xs) - xslice[0]
+    rys = np.round(ys) - yslice[0]
+
+    lx = xslice[1] - xslice[0]
+    ly = yslice[1] - yslice[0]
+    rxys = zip(rxs, rys)
+
+    img = Image.new('L', (lx, ly), 0)
+    draw = Image.core.draw(img.im, 0)
+    ink = draw.draw_ink(1, "white")
+    draw.draw_polygon(rxys, ink, 1)
+    draw.draw_polygon(rxys, ink, 0)
+    return np.array(img) != 0
 
 def star_in_polygon((max_y, max_x), polar_coordinate_boundary, seed_x, seed_y, polar_transform):
     polygon_x, polygon_y = polar_to_cartesian(polar_coordinate_boundary, seed_x, seed_y, polar_transform)
 
-    x1 = int(max(0, math.floor(min(polygon_x))))
-    x2 = int(min(max_x, math.ceil(max(polygon_x)) + 1))
-    y1 = int(max(0, math.floor(min(polygon_y))))
-    y2 = int(min(max_y, math.ceil(max(polygon_y)) + 1))
+    polygon_x_bounded = np.maximum(0, np.minimum(max_x - 1, polygon_x))
+    polygon_y_bounded = np.maximum(0, np.minimum(max_y - 1, polygon_y))
 
-    x1 = min(x1, max_x)
-    y1 = min(y1, max_y)
-    x2 = max(0, x2)
-    y2 = max(0, y2)
+    x1 = int(math.floor(np.min(polygon_x_bounded)))
+    x2 = int(math.ceil(np.max(polygon_x_bounded)) + 1)
+    y1 = int(math.floor(np.min(polygon_y_bounded)))
+    y2 = int(math.ceil(np.max(polygon_y_bounded)) + 1)
 
-    small_boolean_mask = get_in_polygon(x1, x2, y1, y2, get_polygon_path(polygon_x, polygon_y))
+    small_boolean_mask = mask_with_pil(polygon_y_bounded, polygon_x_bounded, (y1,y2), (x1,x2))
 
     boolean_mask = np.zeros((max_y, max_x), dtype=bool)
     boolean_mask[y1:y2, x1:x2] = small_boolean_mask

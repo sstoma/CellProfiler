@@ -197,21 +197,17 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue("Features_Quality" in measurements.get_feature_names(OBJECTS_NAME))
         quality = measurements.get_current_measurement(OBJECTS_NAME,"Features_Quality")
         self.assertTrue(len(quality) == 2)
-        self.assertTrue("Location_Center_X" in measurements.get_feature_names(OBJECTS_NAME))
-        location_center_y = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_Y")
-        self.assertTrue(isinstance(location_center_y,np.ndarray))
-        self.assertEqual(np.product(location_center_y.shape),2)
-        self.assertTrue(location_center_y[1]>25)
-        self.assertTrue(location_center_y[1]<45)
-        self.assertTrue(location_center_y[0]>5)
-        self.assertTrue(location_center_y[0]<25)
-        location_center_x = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_X")
-        self.assertTrue(isinstance(location_center_x,np.ndarray))
-        self.assertEqual(np.product(location_center_x.shape),2)
-        self.assertTrue(location_center_x[1]>3)
-        self.assertTrue(location_center_x[1]<18)
-        self.assertTrue(location_center_x[0]>20)
-        self.assertTrue(location_center_x[0]<40)
+        location_center_y = measurements.get_current_measurement(OBJECTS_NAME, "Location_Center_Y")
+        location_center_x = measurements.get_current_measurement(OBJECTS_NAME, "Location_Center_X")
+        positions = sorted(zip(location_center_x, location_center_y))
+        self.assertEqual(2, len(positions))
+
+        self.assertRange(3,18, positions[0][0])
+        self.assertRange(25,45, positions[0][1])
+
+        self.assertRange(20,40, positions[1][0])
+        self.assertRange(5,25, positions[1][1])
+
 
     def test_01_03_test_two_dark_objects(self):
         x = YS.IdentifyYeastCells()
@@ -280,18 +276,14 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue("Location_Center_X" in measurements.get_feature_names(OBJECTS_NAME))
         location_center_y = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_Y")
         location_center_x = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_X")
-        self.assertTrue(isinstance(location_center_y,np.ndarray))
-        self.assertEqual(np.product(location_center_y.shape),2)
-        self.assertTrue(location_center_y[1]>25)
-        self.assertTrue(location_center_y[1]<45)
-        self.assertTrue(location_center_y[0]>5)
-        self.assertTrue(location_center_y[0]<25)
-        self.assertTrue(isinstance(location_center_x,np.ndarray))
-        self.assertEqual(np.product(location_center_x.shape),2)
-        self.assertTrue(location_center_x[1]>3)
-        self.assertTrue(location_center_x[1]<18)
-        self.assertTrue(location_center_x[0]>20)
-        self.assertTrue(location_center_x[0]<40)
+        positions = sorted(zip(location_center_x, location_center_y))
+        self.assertEqual(2, len(positions))
+
+        self.assertRange(3,18, positions[0][0])
+        self.assertRange(25,45, positions[0][1])
+
+        self.assertRange(20,40, positions[1][0])
+        self.assertRange(5,25, positions[1][1])
 
     def test_01_05_test_two_flu_dark_objects(self):
         x = YS.IdentifyYeastCells()
@@ -322,18 +314,14 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertTrue("Location_Center_X" in measurements.get_feature_names(OBJECTS_NAME))
         location_center_y = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_Y")
         location_center_x = measurements.get_current_measurement(OBJECTS_NAME,"Location_Center_X")
-        self.assertTrue(isinstance(location_center_y,np.ndarray))
-        self.assertEqual(np.product(location_center_y.shape),2)
-        self.assertTrue(location_center_y[1]>25)
-        self.assertTrue(location_center_y[1]<45)
-        self.assertTrue(location_center_y[0]>5)
-        self.assertTrue(location_center_y[0]<25)
-        self.assertTrue(isinstance(location_center_x,np.ndarray))
-        self.assertEqual(np.product(location_center_x.shape),2)
-        self.assertTrue(location_center_x[1]>3)
-        self.assertTrue(location_center_x[1]<18)
-        self.assertTrue(location_center_x[0]>20)
-        self.assertTrue(location_center_x[0]<40)
+        positions = sorted(zip(location_center_x, location_center_y))
+        self.assertEqual(2, len(positions))
+
+        self.assertRange(3,18, positions[0][0])
+        self.assertRange(25,45, positions[0][1])
+
+        self.assertRange(20,40, positions[1][0])
+        self.assertRange(5,25, positions[1][1])
 
     def test_01_06_fill_holes(self):
         x = YS.IdentifyYeastCells()
@@ -561,6 +549,7 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertNotEqual(old_params[0], new_params[0])
         self.assertNotEqual(old_params[1], new_params[1])
 
+        #print "found parameters: ", x.autoadapted_params.value
         #x.autoadapted_params.value = "[[16.282366833092343, -12.278185398879907, 608.72017238611102, 17.441635091145478, 203.32510436137059, 7.1180878616033336], [1214.4324725382576, 2367.3881652432678, 216.10299086636189, 2620.6127639758142, 523.98667591841763]]"
 
         # now if we use new parameters option we should find these cells
