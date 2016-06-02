@@ -549,17 +549,17 @@ class test_YeastSegmentation(unittest.TestCase):
         self.assertNotEqual(old_params[0], new_params[0])
         self.assertNotEqual(old_params[1], new_params[1])
 
-        #print "found parameters: ", x.autoadapted_params.value
+        print "found parameters: ", x.autoadapted_params.value
         #x.autoadapted_params.value = "[[16.282366833092343, -12.278185398879907, 608.72017238611102, 17.441635091145478, 203.32510436137059, 7.1180878616033336], [1214.4324725382576, 2367.3881652432678, 216.10299086636189, 2620.6127639758142, 523.98667591841763]]"
 
         # now if we use new parameters option we should find these cells
         object_set = cpo.ObjectSet()
         measurements = cpmeas.Measurements()
         pipeline = cellprofiler.pipeline.Pipeline()
-        x.segmentation_precision.value = 13
+        x.segmentation_precision.value = 12
         x.run(Workspace(pipeline, x, image_set, object_set, measurements, None))
         objects = object_set.get_objects(OBJECTS_NAME)
-
+        self.assertEqual(3, objects.segmented.max())
         self.assertEqual(objects.segmented[100, 100], 3)
         self.assertEqual(objects.segmented[120, 120], 1)
         self.assertEqual(objects.segmented[110, 70], 2)

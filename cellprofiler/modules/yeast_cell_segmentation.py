@@ -216,8 +216,9 @@ class IdentifyYeastCells(cpmi.Identify):
     category = "Yeast Toolbox"
     variable_revision_number = 6
     current_workspace = ''
+    fitting_image_set = None
     param_fit_progress = 0
-    
+
     def create_settings(self):
         self.input_image_name = cps.ImageNameSubscriber(
             "Select the input image",doc="""
@@ -237,7 +238,7 @@ class IdentifyYeastCells(cpmi.Identify):
 
         self.ignore_mask_image_name = cps.ImageNameSubscriber(
             "Select ignore mask image",doc="""
-            Marks the region in the image which are to be ignored by the algorithm in segmentation. TODO
+            You can provide a ignore mark with regions in the image which are to be ignored by the algorithm in segmentation.
             """%globals(), can_be_blank=True)
 
         # TODO add bkg. synthetized from first image
@@ -563,6 +564,8 @@ class IdentifyYeastCells(cpmi.Identify):
         self.current_workspace = workspace
         image_set = workspace.image_set
 
+        self.fitting_image_set = image_set
+
         # load input
         input_image = image_set.get_image(input_image_name, must_be_grayscale=True)
         self.input_image_file_name = input_image.file_name
@@ -769,6 +772,33 @@ class IdentifyYeastCells(cpmi.Identify):
 
             self.fit_parameters(input_image, background_image, ignore_mask_image, ground_truth_labels, progress_max, update, wait)
 
+    def get_param_fitting_input_images_from_workspace(self):
+        """
+        Try to load images from current workspace. Can be used when fitting is called in test run after segmentation has been
+        run at least once.
+        """
+        try:
+            image_set = self.fitting_image_set
+
+            background_needed = self.background_elimination_strategy == BKG_FILE
+            ignore_mask_needed = self.ignore_mask_image_name.value != cps.LEAVE_BLANK
+
+            background_image = None
+            ignore_mask = None
+
+            # load images from workspace
+            input_image = image_set.get_image(self.input_image_name.value, must_be_grayscale=True).pixel_data
+            if background_needed:
+                background_image = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
+            if ignore_mask_needed:
+                ignore_mask = image_set.get_image(self.ignore_mask_image_name.value).pixel_data > 0
+
+            return input_image, background_image, ignore_mask, None
+        except Exception as ex:
+            logger.info("Could not use image from workspace.image_set because: " + str(ex))
+            return None
+
+
     def get_param_fitting_input_images(self):
         import wx
         from bioformats import load_image
@@ -839,7 +869,7 @@ class IdentifyYeastCells(cpmi.Identify):
         import wx
 
         ### opening file dialogs
-        input_data = self.get_param_fitting_input_images()
+        input_data = self.get_param_fitting_input_images_from_workspace() or self.get_param_fitting_input_images()
         if input_data is None:
             return
         input_image, background_image, ignore_mask, labels = input_data
