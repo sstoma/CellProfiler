@@ -350,11 +350,20 @@ class IdentifyYeastCells(cpmi.Identify):
         self.use_ground_truth_to_set_params = cps.DoSomething("","Autoadapt parameters",
             self.ground_truth_editor, doc="""
             Use this option to autoadapt parameters required for correct contour identification. This procedure should be run onced
-            for one image in the serie. Using your input the algorithm "learns" to recognized cells. When you click this button the winow will open.
-            Please select one of the images which you would like to segment. On this images you should draw few cells (3-6) and click "Done". Then the 
+            for one image in the serie. Using your input the algorithm "learns" to recognized cells. When you click this button the window will open.
+            Please select one of the images which you would like to segment. If you use background or ignore mask images you will have to provide them as well.
+            On the input image you should draw few cells (3-6) and click "Done". Then the
             "learning" procedure will start. Please be patient. Usually single iteration lasts 1-5 min. The more iteration you will choose, the more likely
-            it is that the algorithm will work better on your images. 
-            Please check 
+            it is that the algorithm will work better on your images.
+            <br><br>
+            There is an experimental alternative to selecting existing image files which may be useful when images are "produced" by the pipeline:
+            <ol>
+            <li>Start Test Run and step down to IdentifyYeastCells module</li>
+            <li>Step through IdentifyYeastCells - it will run segmentation and remember input images.</li>
+            <li>Now you can adapt without specifing any images.</li>
+            </ol>
+            <br><br>
+            Please check
             <a href="http://www.cellprofiler.org/yeasttoolbox/"> Yeast Toolbox documentation</a> for more details.
             <dl>
             <dd><img src="memory:%(PROTIP_RECOMEND_ICON)s">&nbsp; Recommendations:        
