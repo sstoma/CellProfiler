@@ -4,6 +4,7 @@ import logging
 import sys
 
 import contrib.cell_star.parameter_fitting.test_pf as test_pf
+import contrib.cell_star.utils.debug_util as debug_util
 from contrib.cell_star.parameter_fitting.test_rank_pf import test_rank_pf
 from contrib.cell_star.process.segmentation import Segmentation
 
@@ -36,4 +37,5 @@ if __name__ == "__main__":
     print
     print "CellProfiler autoparams:", Segmentation.encode_auto_params_from_all_params(complete_params)
 
+    debug_util.DEBUGING = True
     test_pf.test_parameters(image_path, mask_path, precision, avg_cell_diameter, complete_params, image_result_path)

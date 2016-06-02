@@ -7,9 +7,12 @@ import random
 import time
 from multiprocessing import Process, Queue
 
+import numpy as np
+from numpy import linalg
 import scipy.optimize as opt
 
 random.seed(1)
+np.random.seed(1)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -172,13 +175,15 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
 
     stop = time.clock()
 
-    best_params = pf_rank_parameters_decode(best_params_encoded)
-    best_params_full = PFRankSnake.merge_rank_parameters(params, best_params)
+    best_params_org = pf_rank_parameters_decode(best_params_encoded)
+    best_params_normalized = pf_rank_parameters_decode(best_params_encoded / linalg.norm(best_params_encoded))
+    best_params_full = PFRankSnake.merge_rank_parameters(params, best_params_normalized)
 
-    logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params.iteritems())]))
+    logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params_org.iteritems())]))
+    logger.debug("Best normalized: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params_normalized.iteritems())]))
     logger.debug("Time: %d" % (stop - start))
     logger.info("Ranking parameter fitting finished with best score %f" % distance)
-    return best_params_full, best_params, distance
+    return best_params_full, best_params_normalized, distance
 
 
 #

@@ -6,10 +6,12 @@ import random
 import time
 from multiprocessing import Process, Queue
 
+import numpy as np
 import scipy.optimize as opt
 from scipy.linalg import norm
 
 random.seed(1)
+np.random.seed(1)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -172,6 +174,7 @@ def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diamete
     distance_function = pf_get_distance(gt_snakes, images, params)
     initial_distance = distance_function(encoded_params)
     logger.debug("Initial parameters distance is (%f)." % (initial_distance))
+    logger.debug("Initial parameters are %s." % params)
     if method_name == "mp" and getattr(sys, "frozen", False) and sys.platform == 'win32':
         # multiprocessing do not work then
         method_name = "brutemaxbasin"
