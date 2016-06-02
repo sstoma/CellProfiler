@@ -573,27 +573,16 @@ class IdentifyYeastCells(cpmi.Identify):
         self.current_workspace = workspace
         image_set = workspace.image_set
 
+        # same image_set for fitting
         self.fitting_image_set = image_set
 
-        # load input
+        #
+        # Load images from workspace
+        #
+        input_pixels, background_pixels, ignore_mask_pixels = self.get_input_images_from_image_set(image_set)
+
         input_image = image_set.get_image(input_image_name, must_be_grayscale=True)
         self.input_image_file_name = input_image.file_name
-        input_pixels = input_image.pixel_data
-
-        # load mask
-        ignore_mask_pixels = None
-        if self.ignore_mask_image_name.value != cps.LEAVE_BLANK:
-            ignore_mask_image = image_set.get_image(self.ignore_mask_image_name)
-            ignore_mask_pixels = ignore_mask_image.pixel_data > 0
-
-        # load previously computed background.
-        if self.background_elimination_strategy == BKG_FILE:
-            background_pixels = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
-        elif self.background_elimination_strategy == BKG_FIRST:  # TODO make it happen
-            background_pixels = self.__get(F_BACKGROUND, workspace, None)
-        else:
-            background_pixels = None
-
         self.current_workspace.display_data.input_pixels = input_pixels
 
         #
@@ -781,14 +770,21 @@ class IdentifyYeastCells(cpmi.Identify):
 
             self.fit_parameters(input_image, background_image, ignore_mask_image, ground_truth_labels, progress_max, update, wait)
 
-    def get_param_fitting_input_images_from_workspace(self):
+    def get_param_fitting_input_images_from_image_set(self):
         """
         Try to load images from current workspace. Can be used when fitting is called in test run after segmentation has been
         run at least once.
         """
-        try:
-            image_set = self.fitting_image_set
+        if self.fitting_image_set is None:
+            return None
 
+        images = self.get_input_images_from_image_set(self.fitting_image_set)
+        if images is None:
+            return None
+        return images + (None,)
+
+    def get_input_images_from_image_set(self, image_set):
+        try:
             background_needed = self.background_elimination_strategy == BKG_FILE
             ignore_mask_needed = self.ignore_mask_image_name.value != cps.LEAVE_BLANK
 
@@ -800,15 +796,16 @@ class IdentifyYeastCells(cpmi.Identify):
             if background_needed:
                 background_image = image_set.get_image(self.background_image_name.value, must_be_grayscale=True).pixel_data
             if ignore_mask_needed:
-                ignore_mask = image_set.get_image(self.ignore_mask_image_name.value).pixel_data > 0
+                ignore_mask_image = image_set.get_image(self.ignore_mask_image_name)
+                ignore_mask = ignore_mask_image.pixel_data > 0
 
-            return input_image, background_image, ignore_mask, None
+            return input_image, background_image, ignore_mask
         except Exception as ex:
             logger.info("Could not use image from workspace.image_set because: " + str(ex))
             return None
 
 
-    def get_param_fitting_input_images(self):
+    def get_param_fitting_input_images_from_user(self):
         import wx
         from bioformats import load_image
 
@@ -877,8 +874,19 @@ class IdentifyYeastCells(cpmi.Identify):
         from wx import OK
         import wx
 
+        ### check if user want to use last pipeline run images
+        pipeline_imagery = self.get_param_fitting_input_images_from_image_set()
+        if pipeline_imagery is not None:
+            # ask if user want to use it
+            with wx.MessageDialog(None,
+                                  "Images used in previous pipeline run are available. Do you want to use them for autoadapting?",
+                                  "Using pipeline images", wx.YES_NO | wx.ICON_QUESTION) as dlg:
+                use_pipeline = dlg.ShowModal()
+            if use_pipeline == wx.NO:
+                pipeline_imagery = None
+
         ### opening file dialogs
-        input_data = self.get_param_fitting_input_images_from_workspace() or self.get_param_fitting_input_images()
+        input_data = pipeline_imagery or self.get_param_fitting_input_images_from_user()
         if input_data is None:
             return
         input_image, background_image, ignore_mask, labels = input_data
