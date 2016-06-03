@@ -79,8 +79,5 @@ def parameters_from_segmentation_precision(parameters, segmentation_precision):
     parameters["segmentation"]["stars"]["sizeWeight"] = list(parameters["segmentation"]["stars"]["sizeWeight"])
 
     parameters["segmentation"]["foreground"]["pickyDetection"] = segmentation_precision > 8
-    if "tracking" not in parameters:
-        parameters["tracking"] = {}
-    parameters["tracking"]["iterations"] = max(1, segmentation_precision * 5 - 25)
 
     return parameters

@@ -24,6 +24,7 @@ from contrib.cell_star.tests.experiments import *
 
 
 class Explorer:
+    cell_star_smoothing = Snake.smooth_contour
     def __init__(self, image, images, ui, cell_star):
         """
         @type cell_star: Segmentation
@@ -35,7 +36,6 @@ class Explorer:
         self.ui.press = self.manage_press
         self.cell_star = cell_star
         self.clear()
-        self.cell_star_smoothing = Snake.smooth_contour
         self.smoothing = self.cell_star_smoothing
 
     def no_smoothing(self, radius, max_diff, points_number, f_tot):

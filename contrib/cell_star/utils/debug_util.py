@@ -38,6 +38,24 @@ try:
 except:
     DEBUGING = False  # turn off debugging images if unavailable (e.g. in CP 2.2 BETA)
 
+# try to load user32.dll for key lock state
+user32_dll = None
+try:
+    import ctypes
+    user32_dll = ctypes.WinDLL ("User32.dll")
+    user32_dll.GetKeyState.restype = ctypes.c_short
+except:
+    pass
+
+
+def check_caps_scroll_state():
+    if user32_dll is None:
+        return None, None
+
+    VK_CAPITAL = 0x14
+    VK_SCROLL = 0X91
+    return user32_dll.GetKeyState(VK_CAPITAL), user32_dll.GetKeyState(VK_SCROLL)
+
 
 def prepare_debug_folder():
     if not exists(debug_image_path):
@@ -117,18 +135,26 @@ def draw_overlay(image, x, y):
 
 
 def explore_cellstar(cellstar):
-    if DEBUGING and EXPLORE:
-        value = 0
-        try:
-            import contrib.cell_star.tests.explorer as exp
-            explorer_ui = exp.ExplorerFrame(images=cellstar.images)
-            explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
-            value = explorer_ui.ShowModal()
-        except:
-            pass
+    if DEBUGING:
+        check_state = check_caps_scroll_state()
+        if EXPLORE or check_state[0] == True and check_state[1] == True:
+            value = 0
+            try:
+                #import wx
+                #app = wx.App(0)
 
-        if value == exp.ExplorerFrame.ABORTED:
-            raise Exception("Execution aborted")
+                import contrib.cell_star.tests.explorer as exp
+                explorer_ui = exp.ExplorerFrame(images=cellstar.images)
+                explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
+                value = explorer_ui.ShowModal()
+
+                #app.MainLoop()
+            except Exception as ex:
+                print ex
+                pass
+
+            if value == exp.ExplorerFrame.ABORTED:
+                raise Exception("Execution aborted")
 
 
 
