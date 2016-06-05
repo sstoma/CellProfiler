@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
-from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed
+from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, general_multiproc_fitting
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode
 
@@ -262,43 +262,14 @@ def optimize_basinhopping(params_to_optimize, distance_function):
 #
 #
 
-def run_wrapper(queue, images, gt_snakes, method, params):
+def run_wrapper(queue, update_queue, images, gt_snakes, method, params):
     global callback_progress
     random.seed()  # reseed with random
-    result = run_singleprocess(images[0], gt_snakes, method, initial_params=params, background_image=images[1],
+    callback_progress = lambda p: update_queue.put(p)
+    result = run_singleprocess(images[0], gt_snakes, method=method, initial_params=params, background_image=images[1],
                                ignore_mask=images[2])
-    #callback_progress = lambda p: update_queue.set(p)
     queue.put(result)
 
 
 def multiproc_optimize(images, gt_snakes, method='brute', initial_params=None):
-    result_queue = Queue()
-    #update_queue = Queue()
-    workers_num = get_max_workers()
-
-    optimizers = [
-        Process(target=run_wrapper, args=(result_queue, images, gt_snakes, method, initial_params)) for _ in range(workers_num)]
-
-    for optimizer in optimizers:
-        optimizer.start()
-
-    results = [result_queue.get() for _ in optimizers]
-    """
-    optimizers_left = workers_num
-    results = []
-    while optimizers_left > 0:
-        time.sleep(0.1)
-        #if not update_queue.empty() and callback_progress is not None:
-        #    callback_progress(update_queue.get())
-
-        if not result_queue.empty():
-            results.append(result_queue.get())
-            optimizers_left -= 1
-    """
-
-    for optimizer in optimizers:
-        optimizer.join()
-
-    sorted_results = sorted(results, key=lambda x: x[2])
-    logger.debug(str(sorted_results[0]))
-    return sorted_results[0][1], sorted_results[0][2]
+    return general_multiproc_fitting(run_wrapper, images, gt_snakes, method, initial_params)

@@ -287,40 +287,29 @@ def optimize_basinhopping(params_to_optimize, distance_function, time_percent = 
 #
 #
 
-
-def run_wrapper(queue, image, gt_snakes, precision, avg_cell_diameter, method, init_params):
-    #global callback_progress
-    random.seed()  # reseed with random
-    result = run(image, gt_snakes, precision, avg_cell_diameter, method, init_params)
-    #callback_progress = lambda p: update_queue.set(p)
-    queue.put(result)
-
-
-def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, init_params=None):
+def general_multiproc_fitting(run_wrapper, *args):
     result_queue = Queue()
-    #update_queue = Queue()
+    update_queue = Queue()
     workers_num = get_max_workers()
 
     optimizers = [
-        Process(target=run_wrapper, args=(result_queue, image, gt_snakes, precision, avg_cell_diameter, "brute", init_params))
+        Process(target=run_wrapper, args=(result_queue, update_queue) + args)
         for _ in range(workers_num)]
 
     for optimizer in optimizers:
         optimizer.start()
 
-    results = [result_queue.get() for o in optimizers]
-    """
     optimizers_left = workers_num
     results = []
     while optimizers_left > 0:
         time.sleep(0.1)
-        #if not update_queue.empty() and callback_progress is not None:
-        #    callback_progress(update_queue.get())
+        if not update_queue.empty() and callback_progress is not None:
+            callback_progress(update_queue.get())
 
         if not result_queue.empty():
             results.append(result_queue.get())
             optimizers_left -= 1
-    """
+
 
     for optimizer in optimizers:
         optimizer.join()
@@ -328,3 +317,15 @@ def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, 
     sorted_results = sorted(results, key=lambda x: x[2])
     logger.debug(str(sorted_results[0]))
     return sorted_results[0][1], sorted_results[0][2]
+
+
+def run_wrapper(queue, update_queue, *args):
+    global callback_progress
+    random.seed()  # reseed with random
+    callback_progress = lambda p: update_queue.put(p)
+    result = run(*args)
+    queue.put(result)
+
+
+def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, init_params=None):
+    return general_multiproc_fitting(run_wrapper, image, gt_snakes, precision, avg_cell_diameter, "brutemaxbasin", init_params)
