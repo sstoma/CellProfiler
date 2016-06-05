@@ -25,10 +25,26 @@ from contrib.cell_star.process.segmentation import Segmentation
 from contrib.cell_star.utils.debug_util import image_show, image_save
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode
 
-from cellprofiler.preferences import get_max_workers
+import cellprofiler.preferences
+get_max_workers = cellprofiler.preferences.get_max_workers
 
 min_number_of_chosen_seeds = 6
 max_number_of_chosen_snakes = 20
+
+#
+#
+# PROGRESS CALLBACKS
+#
+#
+ESTIMATED_CALCULATIONS_NUMBER = 3000.0
+callback_progress = None
+
+
+def show_progress(current_distance, calculation):
+    if calculation % 100 == 0:
+        logger.debug("Current distance: %f, Best: %f, Calc %d"%(current_distance, best_so_far,calculation))
+    if callback_progress is not None and calculation % (ESTIMATED_CALCULATIONS_NUMBER / 50) == 0:
+        callback_progress(float(calculation) / ESTIMATED_CALCULATIONS_NUMBER)
 
 #
 #
@@ -39,6 +55,7 @@ best_so_far = 1
 calculations = 0
 best_3 = []
 
+
 def keep_3_best(partial_parameters, distance):
     global best_3
     best_3.append((distance, partial_parameters))
@@ -47,14 +64,15 @@ def keep_3_best(partial_parameters, distance):
     if best_3[0][0] == best_3[-1][0]:
         best_3 = [best_3[0]]
 
+
 def distance_norm(fitnesses):
     global calculations, best_so_far
     # Mean-Squared Error
     distance = norm((np.ones(fitnesses.shape) - fitnesses)) / np.sqrt(fitnesses.size)
     best_so_far = min(best_so_far, distance)
     calculations += 1
-    if calculations % 100 == 0:
-        logger.debug("Current distance: %f, Best: %f, Calc %d"%(distance, best_so_far,calculations))
+
+    show_progress(distance, calculations)
     return distance
 
 
@@ -132,7 +150,7 @@ def test_trained_parameters(image, star_params, precision, avg_cell_diameter, ou
 #
 
 def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_params=None, background_image=None, ignore_mask=None):
-    global best_3
+    global best_3, calculations
     """
     :param image: input image
     :param gt_snakes: gt snakes label image
@@ -154,6 +172,7 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
 
     start = time.clock()
     best_3 = []
+    calculations = 0
     optimized = optimize(method, gt_snakes, images, params, precision, avg_cell_diameter)
 
     best_arg = optimized[0]
@@ -270,13 +289,16 @@ def optimize_basinhopping(params_to_optimize, distance_function, time_percent = 
 
 
 def run_wrapper(queue, image, gt_snakes, precision, avg_cell_diameter, method, init_params):
+    #global callback_progress
     random.seed()  # reseed with random
     result = run(image, gt_snakes, precision, avg_cell_diameter, method, init_params)
+    #callback_progress = lambda p: update_queue.set(p)
     queue.put(result)
 
 
 def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, init_params=None):
     result_queue = Queue()
+    #update_queue = Queue()
     workers_num = get_max_workers()
 
     optimizers = [
@@ -287,6 +309,18 @@ def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, 
         optimizer.start()
 
     results = [result_queue.get() for o in optimizers]
+    """
+    optimizers_left = workers_num
+    results = []
+    while optimizers_left > 0:
+        time.sleep(0.1)
+        #if not update_queue.empty() and callback_progress is not None:
+        #    callback_progress(update_queue.get())
+
+        if not result_queue.empty():
+            results.append(result_queue.get())
+            optimizers_left -= 1
+    """
 
     for optimizer in optimizers:
         optimizer.join()

@@ -4,8 +4,10 @@ import logging
 import sys
 
 import contrib.cell_star.parameter_fitting.test_pf as test_pf
+import contrib.cell_star.parameter_fitting.pf_process as pf_process
 import contrib.cell_star.utils.debug_util as debug_util
 from contrib.cell_star.parameter_fitting.test_rank_pf import test_rank_pf
+import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank
 from contrib.cell_star.process.segmentation import Segmentation
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,8 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.addHandler(ch)
 
+    pf_process.get_max_workers = lambda: 2
+    pf_rank.get_max_workers = lambda: 2
     image_result_path = None
     if len(sys.argv) >= 8:
         image_result_path = sys.argv[7]

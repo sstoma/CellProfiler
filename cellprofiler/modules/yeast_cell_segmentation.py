@@ -218,6 +218,7 @@ class IdentifyYeastCells(cpmi.Identify):
     current_workspace = ''
     fitting_image_set = None
     param_fit_progress = 0
+    param_fit_progress_partial = 0
 
     def create_settings(self):
         self.input_image_name = cps.ImageNameSubscriber(
@@ -740,15 +741,17 @@ class IdentifyYeastCells(cpmi.Identify):
                         AutoFitterThread(run_pf, self.update_snake_params,
                                          input_image, background_image, ignore_mask_image, ground_truth_labels,
                                          self.best_parameters,
-                                         self.segmentation_precision.value, self.average_cell_diameter.value))
+                                         self.segmentation_precision.value, self.average_cell_diameter.value,
+                                         self.update_partial_iteration_progress))
 
                     aft_active.append(
                         AutoFitterThread(run_rank_pf, self.update_rank_params,
                                          input_image, background_image, ignore_mask_image, ground_truth_labels,
-                                         self.best_parameters))
+                                         self.best_parameters,
+                                         self.update_partial_iteration_progress))
 
                 # here update params. in the GUI
-                keep_going_update = update_callback(self.param_fit_progress)
+                keep_going_update = update_callback(self.param_fit_progress + self.param_fit_progress_partial)
                 keep_going = keep_going and keep_going_update
 
         finally:
@@ -760,10 +763,10 @@ class IdentifyYeastCells(cpmi.Identify):
         # reading GT from dialog_box.labels[0] and image from self.pixel
         progress_max = self.autoadaptation_steps.value * 2  # every step consists of: snake params and ranking params fitting
 
-        with wx.ProgressDialog("Fitting parameters..", "Iterations remaining", progress_max,
+        with wx.ProgressDialog("Fitting parameters..", "Iterations remaining", progress_max * 100,  # show percents of change
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME) as dialog:
             def update(steps):
-                return dialog.Update(steps)[0]
+                return dialog.Update(steps * 100)[0]
 
             def wait(time):
                 return wx.Sleep(time)
@@ -932,6 +935,9 @@ class IdentifyYeastCells(cpmi.Identify):
 
         self.fit_parameters_with_ui(input_processed, background_processed, ignore_mask_processed, labels)
 
+    def update_partial_iteration_progress(self, fraction):
+        self.param_fit_progress_partial = min(0.99, max(self.param_fit_progress_partial, fraction))
+
     def update_snake_params(self, new_parameters, new_snake_score):
         if new_snake_score < self.best_snake_score:
             self.best_snake_score = new_snake_score
@@ -943,6 +949,7 @@ class IdentifyYeastCells(cpmi.Identify):
         else:
             logger.info("New auto parameters (%f) are not better than current (%f)." % (new_snake_score,self.best_snake_score))
         self.param_fit_progress += 1
+        self.param_fit_progress_partial = 0
 
     def update_rank_params(self, new_parameters, new_rank_score):
         if new_rank_score < self.best_rank_score:
@@ -954,6 +961,7 @@ class IdentifyYeastCells(cpmi.Identify):
         else:
             logger.info("New auto ranking parameters (%f) are not better than current (%f)." % (new_rank_score,self.best_rank_score))
         self.param_fit_progress += 1
+        self.param_fit_progress_partial = 0
 
 
 class AutoFitterThread(threading.Thread):

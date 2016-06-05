@@ -8,6 +8,7 @@ import numpy as np
 import scipy as sp
 
 from cellprofiler.preferences import get_max_workers
+import contrib.cell_star.parameter_fitting.pf_process as pf_process
 from contrib.cell_star.parameter_fitting.pf_process import run, test_trained_parameters
 from contrib.cell_star.parameter_fitting.pf_snake import GTSnake
 from contrib.cell_star.utils import image_util, debug_util
@@ -53,7 +54,7 @@ def try_load_image(image_path):
     return image_util.load_frame(corpus_path, image_path)
 
 
-def run_pf(input_image, background_image, ignore_mask_image, gt_label, parameters, precision, avg_cell_diameter):
+def run_pf(input_image, background_image, ignore_mask_image, gt_label, parameters, precision, avg_cell_diameter, callback_progress = None):
     """
     :param input_image:
     :param gt_label:
@@ -62,6 +63,7 @@ def run_pf(input_image, background_image, ignore_mask_image, gt_label, parameter
     """
 
     gt_mask = image_to_label(gt_label)
+    pf_process.callback_progress = callback_progress
 
     gt_snakes = gt_label_to_snakes(gt_mask)
     if get_max_workers() > 1:
@@ -108,6 +110,8 @@ if __name__ == "__main__":
         print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method"
         print "Given: " + " ".join(sys.argv)
         sys.exit(-1)
+
+    pf_process.get_max_workers = lambda: 2
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     logger = logging.getLogger('contrib.cell_star.parameter_fitting')

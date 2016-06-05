@@ -23,7 +23,23 @@ from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, g
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode
 
-from cellprofiler.preferences import get_max_workers
+import cellprofiler.preferences
+get_max_workers = cellprofiler.preferences.get_max_workers
+
+#
+#
+# PROGRESS CALLBACKS
+#
+#
+ESTIMATED_CALCULATIONS_NUMBER = 20000.0
+callback_progress = None
+
+
+def show_progress(current_distance, calculation):
+    if calculations % 100 == 0:
+        logger.debug("Rank current: %f, Best: %f, Calc %d" % (current_distance, best_so_far, calculation))
+    if callback_progress is not None and calculation % (ESTIMATED_CALCULATIONS_NUMBER / 50) == 0:
+        callback_progress(float(calculation) / ESTIMATED_CALCULATIONS_NUMBER)
 
 #
 #
@@ -51,8 +67,8 @@ def distance_norm_list(expected, result):
     distance = sum([abs(exp_position[obj] - i) ** 2 for (i, obj) in positions]) / maximal_distance(length)  # scaling to [0,1]
     best_so_far = min(best_so_far, distance)
     calculations += 1
-    if calculations % 100 == 0:
-        logger.debug("Rank current: %f, Best: %f, Calc %d" % (distance, best_so_far, calculations))
+
+    show_progress(distance, calculations)
     return distance
 
 
@@ -247,15 +263,19 @@ def optimize_basinhopping(params_to_optimize, distance_function):
 #
 
 def run_wrapper(queue, images, gt_snakes, method, params):
+    global callback_progress
     random.seed()  # reseed with random
     result = run_singleprocess(images[0], gt_snakes, method, initial_params=params, background_image=images[1],
                                ignore_mask=images[2])
+    #callback_progress = lambda p: update_queue.set(p)
     queue.put(result)
 
 
 def multiproc_optimize(images, gt_snakes, method='brute', initial_params=None):
     result_queue = Queue()
+    #update_queue = Queue()
     workers_num = get_max_workers()
+
     optimizers = [
         Process(target=run_wrapper, args=(result_queue, images, gt_snakes, method, initial_params)) for _ in range(workers_num)]
 
@@ -263,6 +283,18 @@ def multiproc_optimize(images, gt_snakes, method='brute', initial_params=None):
         optimizer.start()
 
     results = [result_queue.get() for _ in optimizers]
+    """
+    optimizers_left = workers_num
+    results = []
+    while optimizers_left > 0:
+        time.sleep(0.1)
+        #if not update_queue.empty() and callback_progress is not None:
+        #    callback_progress(update_queue.get())
+
+        if not result_queue.empty():
+            results.append(result_queue.get())
+            optimizers_left -= 1
+    """
 
     for optimizer in optimizers:
         optimizer.join()

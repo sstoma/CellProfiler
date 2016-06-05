@@ -11,7 +11,7 @@ from cellprofiler.preferences import get_max_workers
 from contrib.cell_star.parameter_fitting.test_pf import try_load_image, image_to_label, gt_label_to_snakes
 
 
-def run_rank_pf(input_image, background_image, ignore_mask_image, gt_mask, parameters):
+def run_rank_pf(input_image, background_image, ignore_mask_image, gt_mask, parameters, callback_progress = None):
     """
     :param input_image:
     :param gt_mask:
@@ -20,6 +20,7 @@ def run_rank_pf(input_image, background_image, ignore_mask_image, gt_mask, param
     """
 
     gt_mask = image_to_label(gt_mask)
+    pf_rank.callback_progress = callback_progress
 
     gt_snakes = gt_label_to_snakes(gt_mask)
     if get_max_workers() > 1 and not(getattr(sys, "frozen", False) and sys.platform == 'win32'):
@@ -57,6 +58,8 @@ if __name__ == "__main__":
         print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method"
         print "Given: " + " ".join(sys.argv)
         sys.exit(-1)
+
+    pf_rank.get_max_workers = lambda: 2
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     logger = logging.getLogger('contrib.cell_star.parameter_fitting')
