@@ -15,6 +15,7 @@ Website: http://www.cellprofiler.org
 
 import ast
 import unittest
+import StringIO
 
 import numpy as np
 import scipy.ndimage
@@ -90,7 +91,92 @@ class test_YeastSegmentation(unittest.TestCase):
         # save image and load it using both methods
         # check png, tiff 8/16
         self.fail("TODO")
-        
+
+    def test_00_2_load_v6(self):
+        self.longMessage = True
+        data = r"""CellProfiler Pipeline: http://www.cellprofiler.org
+Version:1
+SVNRevision:9008
+
+LoadImages:[module_num:1|svn_version:\'8947\'|variable_revision_number:4|show_window:True|notes:\x5B\x5D]
+    What type of files are you loading?:individual images
+    How do you want to load these files?:Text-Exact match
+    How many images are there in each group?:3
+    Type the text that the excluded images have in common:Do not use
+    Analyze all subfolders within the selected folder?:No
+    Image location:Default Image Folder
+    Enter the full path to the images:
+    Do you want to check image sets for missing or duplicate files?:Yes
+    Do you want to group image sets by metadata?:No
+    Do you want to exclude certain files?:No
+    What metadata fields do you want to group by?:
+    Type the text that these images have in common (case-sensitive):
+    What do you want to call this image in CellProfiler?:DNA
+    What is the position of this image in each group?:1
+    Do you want to extract metadata from the file name, the subfolder path or both?:None
+    Type the regular expression that finds metadata in the file name\x3A:^(?P<Plate>.*)_(?P<Well>\x5BA-P\x5D\x5B0-9\x5D{2})_s(?P<Site>\x5B0-9\x5D)
+    Type the regular expression that finds metadata in the subfolder path\x3A:.*\x5B\\\\/\x5D(?P<Date>.*)\x5B\\\\/\x5D(?P<Run>.*)$
+
+IdentifyYeastCells:[module_num:2|svn_version:\'Unknown\'|variable_revision_number:6|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input image:Input
+    Name the primary objects to be identified:YeastCells
+    Average cell diameter in pixels:27.0
+    Segmentation precision:11
+    Maximal overlap allowed while final filtering of cells:0.2
+    Select the empty field image:None
+    Retain outlines of the identified objects?:No
+    Name the outline image:PrimaryOutlines
+    Use advanced configuration parameters:Yes
+    Is the area without cells (background) brighter then cell interiors?:Yes
+    Do you want to segment brightfield images?:Yes
+    Minimal area of accepted cell in pixels:900
+    Maximum area of accepted cell in pixels:4500
+    Do you want to filter cells by area?:No
+    Select the background calculation mode:Actual image
+    Do you want to see autoadapted parameters?:Yes
+    Autoadapted parameters\x3A :\x5B\x5B0.1, 0.0442, 304.45, 15.482, 189.40820000000002, 7.0\x5D, \x5B300, 10, 0, 18, 10\x5D\x5D
+    Number of steps in the autoadaptation procedure:1
+    Select ignore mask image:Leave blank
+
+IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_number:7|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+    Select the input image:Input
+    Name the primary objects to be identified:YeastCells
+    Average cell diameter in pixels:27.0
+    Segmentation precision:2
+    Maximal overlap allowed while final filtering of cells:0.2
+    Select the empty field image:None
+    Retain outlines of the identified objects?:No
+    Name the outline image:PrimaryOutlines
+    Use advanced configuration parameters:Yes
+    Is the area without cells (background) brighter then cell interiors?:Yes
+    Do you want to segment brightfield images?:Yes
+    Minimal area of accepted cell in pixels:900
+    Maximum area of accepted cell in pixels:4500
+    Do you want to filter cells by area?:No
+    Select the background calculation mode:Actual image
+    Do you want to see autoadapted parameters?:Yes
+    Autoadapted parameters\x3A :\x5B\x5B0.1, 0.0442, 304.45, 15.482, 189.40820000000002, 7.0\x5D, \x5B300, 10, 0, 18, 10\x5D\x5D
+    Number of steps in the autoadaptation procedure:1
+    Select ignore mask image:Leave blank
+"""
+        pipeline = cellprofiler.pipeline.Pipeline()
+        def callback(caller,event):
+            self.assertFalse(
+                isinstance(event, cellprofiler.pipeline.LoadExceptionEvent))
+        pipeline.add_listener(callback)
+        pipeline.load(StringIO.StringIO(data))
+        self.assertEqual(len(pipeline.modules()),3)
+        module1 = pipeline.modules()[1]
+        module2 = pipeline.modules()[2]
+        self.assertTrue(isinstance(module1, YS.IdentifyYeastCells))
+        self.assertTrue(isinstance(module2, YS.IdentifyYeastCells))
+
+        # both module should be now exactly the same
+        self.assertEqual(len(module1.settings()), len(module2.settings()))
+        for i in range(len(module1.settings())):
+            self.assertEqual(module1.settings()[i].text, module2.settings()[i].text)
+            self.assertEqual(module1.settings()[i].value, module2.settings()[i].value, module1.settings()[i].text)
+
     def test_01_00_test_zero_objects(self):
         x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME

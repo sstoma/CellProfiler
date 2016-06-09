@@ -214,7 +214,7 @@ M_OBJECT_FEATURES_OBJECT_QUALITY= '%s_%s' % (C_OBJECT_FEATURES, FTR_OBJECT_QUALI
 class IdentifyYeastCells(cpmi.Identify):
     module_name = "IdentifyYeastCells"
     category = "Yeast Toolbox"
-    variable_revision_number = 6
+    variable_revision_number = 7
     current_workspace = ''
     fitting_image_set = None
     param_fit_progress = 0
@@ -311,7 +311,7 @@ class IdentifyYeastCells(cpmi.Identify):
 
         self.segmentation_precision = cps.Integer(
             "Segmentation precision",
-            9,minval=2,maxval=15,doc = '''\
+            2,minval=1,maxval=5,doc = '''\
             <i>(Used only when you want to specify advanced parameters)</i><br>
             Describes how thouroughly the algorithm serches for cells. Higher values should 
             make it easier to find smaller cells because the more parameters sets are searched. 
@@ -319,7 +319,7 @@ class IdentifyYeastCells(cpmi.Identify):
             <dl>
             <dd><img src="memory:%(PROTIP_RECOMEND_ICON)s">&nbsp; Recommendations:        
             <ul>
-            <li>Start with relatively high value (e.g. 15) </li>
+            <li>Start with relatively high value (e.g. 4) </li>
             <li>If you are satisfied with results, lower the value by 1 until discovered objects still look OK </li>
             </ul></dd>
             </dl>
@@ -517,6 +517,10 @@ class IdentifyYeastCells(cpmi.Identify):
             setting_values = setting_values + [True]
             variable_revision_number = 4
 
+        if variable_revision_number < 7:
+            # decode precision index 3
+            setting_values[3] = str(self.precision_to_ui_map[int(setting_values[3])])
+            variable_revision_number = 7
         return setting_values, variable_revision_number, from_matlab
 
     def display(self, workspace, figure=None):
@@ -567,6 +571,13 @@ class IdentifyYeastCells(cpmi.Identify):
         if category == C_OBJECT_FEATURES:
             result += [FTR_OBJECT_QUALITY]
         return result
+
+    ui_to_precision_map = dict([(1, 9), (2, 11), (3, 12), (4, 13), (5, 15)])
+    precision_to_ui_map = {v: k for k, v in ui_to_precision_map.items()}
+
+    @property
+    def decoded_segmentation_precision_value(self):
+        return self.ui_to_precision_map[self.segmentation_precision.value]
 
     @memory_profile
     def run(self, workspace):
@@ -670,7 +681,7 @@ class IdentifyYeastCells(cpmi.Identify):
     # Returns: yeast cells, yeast cells qualities, background
     #
     def segmentation(self, normalized_image, background_pixels, ignore_mask_pixels = None):
-        cellstar = self.prepare_cell_star_object(self.segmentation_precision.value)
+        cellstar = self.prepare_cell_star_object(self.decoded_segmentation_precision_value)
 
         if self.input_image_file_name is not None:
             dedicated_image_folder = pj(pref.get_default_output_directory(), self.input_image_file_name)
@@ -711,7 +722,7 @@ class IdentifyYeastCells(cpmi.Identify):
         self.best_rank_score = 1000000000
         aft_active = []
         adaptations_stopped = False
-        cellstar = self.prepare_cell_star_object(min(11, self.segmentation_precision.value))
+        cellstar = self.prepare_cell_star_object(min(11, self.decoded_segmentation_precision_value))
         self.best_parameters = cellstar.parameters
         self.autoadapted_params.value = cellstar.encode_auto_params()
 
@@ -741,7 +752,7 @@ class IdentifyYeastCells(cpmi.Identify):
                         AutoFitterThread(run_pf, self.update_snake_params,
                                          input_image, background_image, ignore_mask_image, ground_truth_labels,
                                          self.best_parameters,
-                                         self.segmentation_precision.value, self.average_cell_diameter.value,
+                                         self.decoded_segmentation_precision_value, self.average_cell_diameter.value,
                                          self.update_partial_iteration_progress))
 
                     aft_active.append(
