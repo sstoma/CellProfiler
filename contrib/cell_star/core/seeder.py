@@ -89,8 +89,10 @@ class Seeder(object):
         seeds_number = len(seeds)
         new_seeds_number = int(seeds_number * times)
 
-        px = multiply_list([s.x for s in seeds], times)
-        py = multiply_list([s.y for s in seeds], times)
+        shuffled_seeds = list(seeds)
+        np.random.shuffle(shuffled_seeds)
+        px = multiply_list([s.x for s in shuffled_seeds], times)
+        py = multiply_list([s.y for s in shuffled_seeds], times)
 
         random_angle = np.random.random(new_seeds_number) * 2 * math.pi
         random_radius = np.random.random(new_seeds_number) * max_random_radius

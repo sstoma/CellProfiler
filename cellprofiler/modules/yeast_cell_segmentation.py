@@ -333,7 +333,38 @@ class IdentifyYeastCells(cpmi.Identify):
         self.iterations = cps.Integer(
             "Iterations",
             6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
-            
+
+        self.seeds_border = cps.Float(
+            "Seeds from border",
+            1, minval=0, maxval=5, doc = '''\
+            How many seeds are to be extracted from this source:<br><br>
+            val = 0 - no seeds from this source<br>
+            val in (0.0, 0.5] - seeds only from second iteration<br>
+            val in (0.5, 1) - seeds only in first iteration<br>
+            val = 1 - seeds in every iteration<br>
+            val in (1, 5.0) - additional random seeding: val*seeds_num total<br>
+            ''')
+
+        self.seeds_content = cps.Float(
+            "Seeds from content",
+            1, minval=0, maxval=5, doc = self.seeds_border.doc)
+
+        self.seeds_centroid = cps.Float(
+            "Seeds from centroid",
+            1, minval=0, maxval=5, doc = self.seeds_border.doc)
+
+        self.contour_points = cps.Integer(
+            "Seed from border",
+            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
+
+        self.step_length = cps.Float(
+            "Seed from border",
+            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
+
+        self.weight_number = cps.Integer(
+            "Seed from border",
+            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
+
         self.maximal_cell_overlap = cps.Float(
             "Maximal overlap allowed while final filtering of cells",
             0.2,minval=0,maxval=1,doc='''\
@@ -412,6 +443,9 @@ class IdentifyYeastCells(cpmi.Identify):
             You can use the outlines of the identified objects in modules downstream,
             by selecting them from any drop-down image list."""%globals())
 
+    PRECISION_PARAMS_START = 20
+    PRECISION_PARAMS_END = 23
+
     def settings(self):
         return [self.input_image_name, 
                 self.object_name,
@@ -432,8 +466,12 @@ class IdentifyYeastCells(cpmi.Identify):
                 self.autoadapted_params,
                 self.autoadaptation_steps,
                 self.ignore_mask_image_name,
+
                 self.show_precision_details,
-                self.iterations
+                self.iterations,
+                self.seeds_border,
+                self.seeds_content,
+                self.seeds_centroid
                 ]
 
     def visible_settings(self):
@@ -462,6 +500,9 @@ class IdentifyYeastCells(cpmi.Identify):
             list.append(self.show_precision_details)
             if self.show_precision_details:
                 list.append(self.iterations)
+                list.append(self.seeds_border)
+                list.append(self.seeds_content)
+                list.append(self.seeds_centroid)
 
             list.append(self.maximal_cell_overlap)
             list.append(self.advanced_cell_filtering)
@@ -547,7 +588,7 @@ class IdentifyYeastCells(cpmi.Identify):
             # fill new ones based on precision
             setting_values = setting_values + [False]
             params_from_precision = self.get_ui_params_from_precision(int(setting_values[3]))
-            setting_values[20:21] = params_from_precision
+            setting_values[self.PRECISION_PARAMS_START:self.PRECISION_PARAMS_END+1] = params_from_precision
             variable_revision_number = 8
         return setting_values, variable_revision_number, from_matlab
 
@@ -661,15 +702,47 @@ class IdentifyYeastCells(cpmi.Identify):
                                            self.object_name.value, np.max(objects.segmented))
 
     def set_params_from_ui(self, params):
+        def update_params(next_name, first_name, random_name, ui_value):
+            params["segmentation"]["seeding"]["from"][next_name] = ui_value >= 1 or ui_value <= 0.5
+            params["segmentation"]["seeding"]["from"][first_name] = ui_value > 0.5
+            params["segmentation"]["seeding"]["from"][random_name] = int(ui_value - 1)
+
+
         params["segmentation"]["steps"] = self.iterations.value
+        update_params("cellBorderRemovingCurrSegments", "cellBorder", "cellBorderRandom", self.seeds_border.value)
+        update_params("cellContentRemovingCurrSegments", "cellContent", "cellContentRandom", self.seeds_content.value)
+
+        params["segmentation"]["seeding"]["from"]["snakesCentroids"] = self.seeds_centroid.value > 0.0
+        params["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = int(self.seeds_centroid.value - 1)
+
+        # TODO PREC
 
     def get_ui_params_from_precision(self, ui_precision):
+        def params_to_ui(params, next_name, first_name, random_name):
+            random = params["segmentation"]["seeding"]["from"][random_name]
+            next = params["segmentation"]["seeding"]["from"][next_name]
+            first = params["segmentation"]["seeding"]["from"][first_name]
+            if random != 0:
+                return random + 1
+            elif next and first:
+                return 1
+            elif first:
+                return 0.7
+            elif next:
+                return 0.5
+            return 0.0
+
         params = default_parameters(self.ui_to_precision_map[ui_precision], 30)
-        return [params["segmentation"]["steps"]]
+        ui_params = [params["segmentation"]["steps"]]
+        ui_params.append(params_to_ui(params, "cellBorderRemovingCurrSegments", "cellBorder", "cellBorderRandom"))
+        ui_params.append(params_to_ui(params, "cellContentRemovingCurrSegments", "cellContent", "cellContentRandom"))
+        ui_params.append(params_to_ui(params, "snakesCentroids", "snakesCentroids", "snakesCentroidsRandom"))
+        # TODO PREC
+        return ui_params
 
     def set_ui_from_precision(self, ui_precision):
         ui_precision_values = self.get_ui_params_from_precision(ui_precision)
-        ui_precision_settings = self.settings()[20:21]
+        ui_precision_settings = self.settings()[self.PRECISION_PARAMS_START:self.PRECISION_PARAMS_END+1]
         for setting, value in zip(ui_precision_settings, ui_precision_values):
             setting.value = value
 

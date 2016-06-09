@@ -32,10 +32,14 @@ class test_CellStar(unittest.TestCase):
     def test_random_seeds_fractions(self):
         from contrib.cell_star.core.seed import Seed
         from contrib.cell_star.core.seeder import Seeder
-
+        np.random.seed(1)
         def assertIsClose(x, y, seed):
             self.assertEqual(x, int(seed.x + .5))
             self.assertEqual(y, int(seed.y + .5))
+
+        def run_and_sort(times, seeds):
+            return sorted(Seeder.rand_seeds(0.1, times, seeds), key=lambda x: x.x)
+
 
         seeds = []
         seeds.append(Seed(1, 1, 'test1'))
@@ -43,30 +47,37 @@ class test_CellStar(unittest.TestCase):
         seeds.append(Seed(3, 3, 'test3'))
         seeds.append(Seed(4, 4, 'test4'))
 
-        new_seeds = Seeder.rand_seeds(0.1, 1.6, seeds)
+        new_seeds = run_and_sort(1.6, seeds)
 
         self.assertEqual(6, len(new_seeds))
+        # on seed 1
         assertIsClose(1, 1, new_seeds[0])
         assertIsClose(2, 2, new_seeds[1])
         assertIsClose(3, 3, new_seeds[2])
-        assertIsClose(4, 4, new_seeds[3])
-        assertIsClose(1, 1, new_seeds[4])
-        assertIsClose(2, 2, new_seeds[5])
+        assertIsClose(3, 3, new_seeds[3])
+        assertIsClose(4, 4, new_seeds[4])
+        assertIsClose(4, 4, new_seeds[5])
 
-        new_seeds = Seeder.rand_seeds(0.1, 0.3, seeds)
+        new_seeds = run_and_sort(0.3, seeds)
         self.assertEqual(1, len(new_seeds))
-        assertIsClose(1, 1, new_seeds[0])
+        assertIsClose(4, 4, new_seeds[0])
 
-        new_seeds = Seeder.rand_seeds(0.1, 2.5, seeds)
+        new_seeds = run_and_sort(2.5, seeds)
         self.assertEqual(10, len(new_seeds))
         assertIsClose(4, 4, new_seeds[7])
-        assertIsClose(2, 2, new_seeds[9])
+        assertIsClose(4, 4, new_seeds[9])
 
-        new_seeds = Seeder.rand_seeds(0.1, 1.99, seeds)
+        new_seeds = run_and_sort(1.99, seeds)
         self.assertEqual(7, len(new_seeds))
 
-        new_seeds = Seeder.rand_seeds(0.1, 0.01, seeds)
+        new_seeds = run_and_sort(0.01, seeds)
         self.assertEqual(0, len(new_seeds))
+
+        new_seeds = run_and_sort(3, seeds)
+        self.assertEqual(3, len([s for s in new_seeds if int(s.x + .5) == 1]))
+        self.assertEqual(3, len([s for s in new_seeds if int(s.x + .5) == 2]))
+        self.assertEqual(3, len([s for s in new_seeds if int(s.x + .5) == 3]))
+        self.assertEqual(3, len([s for s in new_seeds if int(s.x + .5) == 4]))
 
     def test_loop_connected(self):
         from contrib.cell_star.utils import calc_util
