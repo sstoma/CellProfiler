@@ -172,7 +172,7 @@ try:
 #
 ##################################
 
-    from contrib.cell_star.utils.params_util import default_parameters
+    from contrib.cell_star.utils.params_util import default_parameters, create_size_weights
     from contrib.cell_star.process.segmentation import Segmentation
     from contrib.cell_star.parameter_fitting.test_pf import run_pf
     from contrib.cell_star.parameter_fitting.test_rank_pf import run_rank_pf
@@ -327,7 +327,7 @@ class IdentifyYeastCells(cpmi.Identify):
             '''%globals()
             )
 
-        self.show_precision_details = cps.Binary(
+        self.specify_precision_details = cps.Binary(
             'Do you want to edit details of segmentation precision?', False)
 
         self.iterations = cps.Integer(
@@ -354,16 +354,16 @@ class IdentifyYeastCells(cpmi.Identify):
             1, minval=0, maxval=5, doc = self.seeds_border.doc)
 
         self.contour_points = cps.Integer(
-            "Seed from border",
-            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
+            "Contour points",
+            44, minval=36, maxval=70, doc = 'Number of points in every contour.')
 
-        self.step_length = cps.Float(
-            "Seed from border",
-            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
+        self.contour_precision = cps.Float(
+            "Contour precision",
+            49.75, minval=25, maxval=200, doc = 'Number of space points covering average cell diameter.')
 
-        self.weight_number = cps.Integer(
-            "Seed from border",
-            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
+        self.weights_number = cps.Integer(
+            "Cell size variants",
+            2, minval=1, maxval=4, doc = 'Number of tested difference size weights in every cell grow.')
 
         self.maximal_cell_overlap = cps.Float(
             "Maximal overlap allowed while final filtering of cells",
@@ -444,7 +444,7 @@ class IdentifyYeastCells(cpmi.Identify):
             by selecting them from any drop-down image list."""%globals())
 
     PRECISION_PARAMS_START = 20
-    PRECISION_PARAMS_END = 23
+    PRECISION_PARAMS_END = 26
 
     def settings(self):
         return [self.input_image_name, 
@@ -467,11 +467,14 @@ class IdentifyYeastCells(cpmi.Identify):
                 self.autoadaptation_steps,
                 self.ignore_mask_image_name,
 
-                self.show_precision_details,
+                self.specify_precision_details,
                 self.iterations,
                 self.seeds_border,
                 self.seeds_content,
-                self.seeds_centroid
+                self.seeds_centroid,
+                self.contour_points,
+                self.contour_precision,
+                self.weights_number,
                 ]
 
     def visible_settings(self):
@@ -497,12 +500,15 @@ class IdentifyYeastCells(cpmi.Identify):
         if self.advanced_parameters:
             list.append(self.segmentation_precision)
 
-            list.append(self.show_precision_details)
-            if self.show_precision_details:
+            list.append(self.specify_precision_details)
+            if self.specify_precision_details:
                 list.append(self.iterations)
                 list.append(self.seeds_border)
                 list.append(self.seeds_content)
                 list.append(self.seeds_centroid)
+                list.append(self.contour_points)
+                list.append(self.contour_precision)
+                list.append(self.weights_number)
 
             list.append(self.maximal_cell_overlap)
             list.append(self.advanced_cell_filtering)
@@ -529,7 +535,8 @@ class IdentifyYeastCells(cpmi.Identify):
 
     def on_setting_changed(self, setting, pipeline):
         '''If precision is changed then update all the related settings'''
-        if setting == self.segmentation_precision:
+        if setting == self.segmentation_precision or \
+                                setting == self.specify_precision_details and not self.specify_precision_details.value:
             self.set_ui_from_precision(self.segmentation_precision.value)
 
 
@@ -581,6 +588,7 @@ class IdentifyYeastCells(cpmi.Identify):
             variable_revision_number = 4
 
         if variable_revision_number < 7:
+            setting_values = setting_values + ['Leave blank']  # ignore mask
             # decode precision index 3
             setting_values[3] = str(self.precision_to_ui_map[int(setting_values[3])])
             variable_revision_number = 7
@@ -715,7 +723,13 @@ class IdentifyYeastCells(cpmi.Identify):
         params["segmentation"]["seeding"]["from"]["snakesCentroids"] = self.seeds_centroid.value > 0.0
         params["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = int(self.seeds_centroid.value - 1)
 
-        # TODO PREC
+        params["segmentation"]["stars"]["points"] = self.contour_points.value
+        params["segmentation"]["stars"]["step"] = 1.0 / self.contour_precision.value
+
+        default_size_weight_average = np.average(params["segmentation"]["stars"]["sizeWeight"])
+        params["segmentation"]["stars"]["sizeWeight"] = list(
+            create_size_weights(default_size_weight_average, self.weights_number.value)
+        )
 
     def get_ui_params_from_precision(self, ui_precision):
         def params_to_ui(params, next_name, first_name, random_name):
@@ -737,7 +751,11 @@ class IdentifyYeastCells(cpmi.Identify):
         ui_params.append(params_to_ui(params, "cellBorderRemovingCurrSegments", "cellBorder", "cellBorderRandom"))
         ui_params.append(params_to_ui(params, "cellContentRemovingCurrSegments", "cellContent", "cellContentRandom"))
         ui_params.append(params_to_ui(params, "snakesCentroids", "snakesCentroids", "snakesCentroidsRandom"))
-        # TODO PREC
+
+        ui_params.append(params["segmentation"]["stars"]["points"])
+        ui_params.append(1.0 / params["segmentation"]["stars"]["step"])
+        ui_params.append(len(params["segmentation"]["stars"]["sizeWeight"]))
+
         return ui_params
 
     def set_ui_from_precision(self, ui_precision):

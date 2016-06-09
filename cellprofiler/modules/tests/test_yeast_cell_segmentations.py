@@ -182,6 +182,9 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
         self.assertEqual(1, module2.seeds_border.value)
         self.assertEqual(2, module2.seeds_content.value)
         self.assertEqual(1, module2.seeds_centroid.value)
+        self.assertEqual(52, module2.contour_points.value)
+        self.assertEqual(75, int(.5 + module2.contour_precision.value))
+        self.assertEqual(3, module2.weights_number.value)
 
         # check if precision maps to values after change
         module2.segmentation_precision.value = 1
@@ -190,7 +193,21 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
         self.assertEqual(0.7, module2.seeds_border.value)
         self.assertEqual(0.5, module2.seeds_content.value)
         self.assertEqual(1, module2.seeds_centroid.value)
-        # TODO PREC - add more testings
+        self.assertEqual(36, module2.contour_points.value)
+        self.assertEqual(37, int(.5 + module2.contour_precision.value))
+        self.assertEqual(1, module2.weights_number.value)
+
+        # if we turn off precision details it is restored to default
+        module2.seeds_border.value = 3.1
+        module2.seeds_content.value = 1.5
+        self.assertEqual(3.1, module2.seeds_border.value)
+        self.assertEqual(1.5, module2.seeds_content.value)
+        module2.specify_precision_details.value = 0
+        module2.on_setting_changed(module2.specify_precision_details, None)
+        self.assertEqual(0.7, module2.seeds_border.value)
+        self.assertEqual(0.5, module2.seeds_content.value)
+
+
 
     def test_01_00_test_zero_objects(self):
         x = YS.IdentifyYeastCells()

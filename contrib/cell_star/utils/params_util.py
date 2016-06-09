@@ -18,6 +18,24 @@ def default_parameters(segmentation_precision=-1, avg_cell_diameter=-1, min_size
         return parameters_from_segmentation_precision(parameters, segmentation_precision)
 
 
+def create_size_weights(size_weight_average, length):
+    if length == 1:
+        size_weight_multiplier = np.array([1])
+    elif length == 2:
+        size_weight_multiplier = np.array([0.8, 1.25])
+    elif length == 3:
+        size_weight_multiplier = np.array([0.6, 1, 1.6])
+    elif length == 4:
+        size_weight_multiplier = np.array([0.5, 0.8, 1.3, 2])
+    elif length == 5:
+        size_weight_multiplier = np.array([0.5, 0.8, 1, 1.3, 2])
+    elif length == 6:
+        size_weight_multiplier = np.array([0.35, 0.5, 0.8, 1.3, 2, 3])
+    else:
+        size_weight_multiplier = np.array([0.25, 0.35, 0.5, 0.8, 1.3, 2, 3, 5, 8])
+
+    return size_weight_average * size_weight_multiplier / np.average(size_weight_multiplier)
+
 def parameters_from_segmentation_precision(parameters, segmentation_precision):
     if "use_exact" in parameters:
         # make parameters that are int ints
@@ -58,25 +76,24 @@ def parameters_from_segmentation_precision(parameters, segmentation_precision):
     parameters["segmentation"]["seeding"]["from"]["snakesCentroids"] = int(segmentation_precision >= 9)
     parameters["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = max(0, min(4, sfrom(14)))
 
-    parameters["segmentation"]["stars"]["step"] = 0.0067 * max(1, (1 + (15 - segmentation_precision) / 2))
+    parameters["segmentation"]["stars"]["step"] = 0.0067 * max(1, (1 + (15 - segmentation_precision) / 2.0))
 
     if segmentation_precision <= 9:
-        size_weight_multiplier = np.array([1])
+        weight_length = 1
     elif segmentation_precision <= 11:
-        size_weight_multiplier = np.array([0.8, 1.25])
+        weight_length = 2
     elif segmentation_precision <= 13:
-        size_weight_multiplier = np.array([0.6, 1, 1.6])
+        weight_length = 3
     elif segmentation_precision <= 15:
-        size_weight_multiplier = np.array([0.5, 0.8, 1.3, 2])
+        weight_length = 4
     elif segmentation_precision <= 17:
-        size_weight_multiplier = np.array([0.35, 0.5, 0.8, 1.3, 2, 3])
+        weight_length = 6
     else:
-        size_weight_multiplier = np.array([0.25, 0.35, 0.5, 0.8, 1.3, 2, 3, 5, 8])
+        weight_length = 9
 
-    parameters["segmentation"]["stars"]["sizeWeight"] = \
-        np.average(parameters["segmentation"]["stars"]["sizeWeight"]) * size_weight_multiplier / \
-        np.average(size_weight_multiplier)
-    parameters["segmentation"]["stars"]["sizeWeight"] = list(parameters["segmentation"]["stars"]["sizeWeight"])
+    parameters["segmentation"]["stars"]["sizeWeight"] = list(
+        create_size_weights(np.average(parameters["segmentation"]["stars"]["sizeWeight"]), weight_length)
+    )
 
     parameters["segmentation"]["foreground"]["pickyDetection"] = segmentation_precision > 8
 

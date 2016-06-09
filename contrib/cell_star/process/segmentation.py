@@ -108,7 +108,6 @@ class Segmentation(object):
             if len(snake_params) != len(snake_auto_params) or len(rank_params) != len(rank_auto_params):
                 raise Exception("text invalid: list size not compatible")
 
-
             for name in sorted(snake_auto_params.keys()):
                 val = snake_params[0]
                 if name == "sizeWeight":  # value to list
