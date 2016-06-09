@@ -92,7 +92,7 @@ class test_YeastSegmentation(unittest.TestCase):
         # check png, tiff 8/16
         self.fail("TODO")
 
-    def test_00_2_load_v6(self):
+    def test_00_02_load_v6(self):
         self.longMessage = True
         data = r"""CellProfiler Pipeline: http://www.cellprofiler.org
 Version:1
@@ -121,7 +121,7 @@ IdentifyYeastCells:[module_num:2|svn_version:\'Unknown\'|variable_revision_numbe
     Select the input image:Input
     Name the primary objects to be identified:YeastCells
     Average cell diameter in pixels:27.0
-    Segmentation precision:11
+    Segmentation precision:12
     Maximal overlap allowed while final filtering of cells:0.2
     Select the empty field image:None
     Retain outlines of the identified objects?:No
@@ -142,7 +142,7 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
     Select the input image:Input
     Name the primary objects to be identified:YeastCells
     Average cell diameter in pixels:27.0
-    Segmentation precision:2
+    Segmentation precision:3
     Maximal overlap allowed while final filtering of cells:0.2
     Select the empty field image:None
     Retain outlines of the identified objects?:No
@@ -176,6 +176,9 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
         for i in range(len(module1.settings())):
             self.assertEqual(module1.settings()[i].text, module2.settings()[i].text)
             self.assertEqual(module1.settings()[i].value, module2.settings()[i].value, module1.settings()[i].text)
+
+        # validate default values for precision dependencies
+        self.assertEqual(7, module2.iterations.value)
 
     def test_01_00_test_zero_objects(self):
         x = YS.IdentifyYeastCells()

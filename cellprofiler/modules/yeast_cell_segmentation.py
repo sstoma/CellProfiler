@@ -172,6 +172,7 @@ try:
 #
 ##################################
 
+    from contrib.cell_star.utils.params_util import default_parameters
     from contrib.cell_star.process.segmentation import Segmentation
     from contrib.cell_star.parameter_fitting.test_pf import run_pf
     from contrib.cell_star.parameter_fitting.test_rank_pf import run_rank_pf
@@ -214,7 +215,7 @@ M_OBJECT_FEATURES_OBJECT_QUALITY= '%s_%s' % (C_OBJECT_FEATURES, FTR_OBJECT_QUALI
 class IdentifyYeastCells(cpmi.Identify):
     module_name = "IdentifyYeastCells"
     category = "Yeast Toolbox"
-    variable_revision_number = 7
+    variable_revision_number = 8
     current_workspace = ''
     fitting_image_set = None
     param_fit_progress = 0
@@ -325,6 +326,13 @@ class IdentifyYeastCells(cpmi.Identify):
             </dl>
             '''%globals()
             )
+
+        self.show_precision_details = cps.Binary(
+            'Do you want to edit details of segmentation precision?', False)
+
+        self.iterations = cps.Integer(
+            "Iterations",
+            6, minval=1, maxval=15, doc = 'Number of iterations done by CellStar.')
             
         self.maximal_cell_overlap = cps.Float(
             "Maximal overlap allowed while final filtering of cells",
@@ -423,7 +431,9 @@ class IdentifyYeastCells(cpmi.Identify):
                 self.show_autoadapted_params,
                 self.autoadapted_params,
                 self.autoadaptation_steps,
-                self.ignore_mask_image_name
+                self.ignore_mask_image_name,
+                self.show_precision_details,
+                self.iterations
                 ]
 
     def visible_settings(self):
@@ -448,6 +458,11 @@ class IdentifyYeastCells(cpmi.Identify):
         #
         if self.advanced_parameters:
             list.append(self.segmentation_precision)
+
+            list.append(self.show_precision_details)
+            if self.show_precision_details:
+                list.append(self.iterations)
+
             list.append(self.maximal_cell_overlap)
             list.append(self.advanced_cell_filtering)
             if self.advanced_cell_filtering:
@@ -469,6 +484,13 @@ class IdentifyYeastCells(cpmi.Identify):
             list.append(self.save_outlines)
 
         return list
+
+
+    def on_setting_changed(self, setting, pipeline):
+        '''If precision is changed then update all the related settings'''
+        if setting == self.segmentation_precision:
+            self.set_ui_from_precision(self.segmentation_precision.value)
+
 
     def is_interactive(self):
         return False
@@ -521,6 +543,12 @@ class IdentifyYeastCells(cpmi.Identify):
             # decode precision index 3
             setting_values[3] = str(self.precision_to_ui_map[int(setting_values[3])])
             variable_revision_number = 7
+        if variable_revision_number == 7:
+            # fill new ones based on precision
+            setting_values = setting_values + [False]
+            params_from_precision = self.get_ui_params_from_precision(int(setting_values[3]))
+            setting_values[20:21] = params_from_precision
+            variable_revision_number = 8
         return setting_values, variable_revision_number, from_matlab
 
     def display(self, workspace, figure=None):
@@ -573,7 +601,7 @@ class IdentifyYeastCells(cpmi.Identify):
         return result
 
     ui_to_precision_map = dict([(1, 9), (2, 11), (3, 12), (4, 13), (5, 15)])
-    precision_to_ui_map = {v: k for k, v in ui_to_precision_map.items()}
+    precision_to_ui_map = dict([(v, k) for k, v in ui_to_precision_map.items()] + [(10, 2)])
 
     @property
     def decoded_segmentation_precision_value(self):
@@ -632,9 +660,25 @@ class IdentifyYeastCells(cpmi.Identify):
         cpmi.add_object_count_measurements(workspace.measurements,
                                            self.object_name.value, np.max(objects.segmented))
 
+    def set_params_from_ui(self, params):
+        params["segmentation"]["steps"] = self.iterations.value
+
+    def get_ui_params_from_precision(self, ui_precision):
+        params = default_parameters(self.ui_to_precision_map[ui_precision], 30)
+        return [params["segmentation"]["steps"]]
+
+    def set_ui_from_precision(self, ui_precision):
+        ui_precision_values = self.get_ui_params_from_precision(ui_precision)
+        ui_precision_settings = self.settings()[20:21]
+        for setting, value in zip(ui_precision_settings, ui_precision_values):
+            setting.value = value
+
+
     def prepare_cell_star_object(self, segmentation_precision):
         cellstar = Segmentation(segmentation_precision, self.average_cell_diameter.value)
         cellstar.parameters["segmentation"]["maxOverlap"] = self.maximal_cell_overlap.value
+        self.set_params_from_ui(cellstar.parameters)
+
         if self.advanced_cell_filtering.value:
             def calculate_area_multiplier(area):
                 return 4.0 * area / self.average_cell_diameter.value ** 2 / math.pi
