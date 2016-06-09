@@ -87,11 +87,13 @@ class Seeder(object):
         @type seeds: list[Seed]
         """
         seeds_number = len(seeds)
-        px = [s.x for s in seeds] * times
-        py = [s.y for s in seeds] * times
+        new_seeds_number = int(seeds_number * times)
 
-        random_angle = np.random.random(seeds_number * times) * 2 * math.pi
-        random_radius = np.random.random(seeds_number * times) * max_random_radius
+        px = multiply_list([s.x for s in seeds], times)
+        py = multiply_list([s.y for s in seeds], times)
+
+        random_angle = np.random.random(new_seeds_number) * 2 * math.pi
+        random_radius = np.random.random(new_seeds_number) * max_random_radius
 
         rpx = px + random_radius * np.cos(random_angle)
         rpy = py + random_radius * np.sin(random_angle)

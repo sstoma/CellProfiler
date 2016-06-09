@@ -68,7 +68,7 @@ def loop_connected_components(mask):
         c, fin = zip(*c_fin)
         c = np.array(c, dtype=int)
         fin = np.array(fin, dtype=int)
-        init = (fin - c) % mask.shape[0] + 1
+        init = (fin - c + 1) % mask.shape[0]
     return c, init, fin
 
 
@@ -222,3 +222,12 @@ def star_in_polygon((max_y, max_x), polar_coordinate_boundary, seed_x, seed_y, p
     yx = [y1, x1]
 
     return boolean_mask, small_boolean_mask, yx
+
+
+def multiply_list(ls, times):
+    list_length = len(ls)
+    integer_times = int(times)
+    fraction_elements = int((times - int(times)) * list_length)
+    res = ls * integer_times
+    res += ls[:fraction_elements]
+    return res
