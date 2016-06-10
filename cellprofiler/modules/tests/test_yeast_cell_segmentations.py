@@ -631,6 +631,7 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
 
     def test_03_01_simple_fitting(self):
         np.random.seed(1)
+
         x = YS.IdentifyYeastCells()
         x.object_name.value = OBJECTS_NAME
 

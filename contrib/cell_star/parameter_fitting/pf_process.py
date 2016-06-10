@@ -23,7 +23,7 @@ from contrib.cell_star.parameter_fitting.pf_snake import PFSnake, GTSnake
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.process.segmentation import Segmentation
 from contrib.cell_star.utils.debug_util import image_show, image_save
-from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode
+from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode, parameters_range
 
 import cellprofiler.preferences
 get_max_workers = cellprofiler.preferences.get_max_workers
@@ -193,6 +193,11 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
     best_score = optimized[1]
 
     stop = time.clock()
+    smoothness = best_params["smoothness"]
+    smoothness_bounded = max(parameters_range["smoothness"][0], min(smoothness, parameters_range["smoothness"][1]))
+    if smoothness_bounded != smoothness:
+        logger.info("Bounding smoothness: %f -> %f" % (smoothness,smoothness_bounded))
+        best_params["smoothness"] = float(smoothness_bounded)
 
     logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params.iteritems())]))
     logger.debug("Time: %d" % (stop - start))

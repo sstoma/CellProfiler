@@ -10,11 +10,11 @@ import numpy as np
 #
 
 parameters_range = {"brightnessWeight": (-0.4, 0.4),
-                    "borderThickness": (0.0, 1.0),
+                    "borderThickness": (0.001, 1.0),
                     "cumBrightnessWeight": (0, 500),
                     "gradientWeight": (-30, 30),
                     "sizeWeight": (10, 300),
-                    "smoothness": (2, 15)
+                    "smoothness": (4, 10)
 }
 
 rank_parameters_range = {"avgBorderBrightnessWeight": (0, 600),
@@ -54,6 +54,8 @@ def pf_parameters_encode(parameters):
         point.append(val)
     # should be scaled to go from 0-1
     return point
+
+#def pf_limit_basin(param_vector, avg_cell_diameter):
 
 
 def pf_parameters_decode(param_vector, org_size_weights_list, step, avg_cell_diameter, max_size):
