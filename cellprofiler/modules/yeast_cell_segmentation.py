@@ -713,15 +713,17 @@ class IdentifyYeastCells(cpmi.Identify):
         def update_params(next_name, first_name, random_name, ui_value):
             params["segmentation"]["seeding"]["from"][next_name] = ui_value >= 1 or ui_value <= 0.5
             params["segmentation"]["seeding"]["from"][first_name] = ui_value > 0.5
-            params["segmentation"]["seeding"]["from"][random_name] = int(ui_value - 1)
+            params["segmentation"]["seeding"]["from"][random_name] = ui_value - 1
 
-
+        params_seeding = params["segmentation"]["seeding"]["from"]
         params["segmentation"]["steps"] = self.iterations.value
         update_params("cellBorderRemovingCurrSegments", "cellBorder", "cellBorderRandom", self.seeds_border.value)
         update_params("cellContentRemovingCurrSegments", "cellContent", "cellContentRandom", self.seeds_content.value)
+        params_seeding["cellBorderRemovingCurrSegmentsRandom"] = params_seeding["cellBorderRandom"]
+        params_seeding["cellContentRemovingCurrSegmentsRandom"] = params_seeding["cellContentRandom"]
 
         params["segmentation"]["seeding"]["from"]["snakesCentroids"] = self.seeds_centroid.value > 0.0
-        params["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = int(self.seeds_centroid.value - 1)
+        params["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = self.seeds_centroid.value - 1
 
         params["segmentation"]["stars"]["points"] = self.contour_points.value
         params["segmentation"]["stars"]["step"] = 1.0 / self.contour_precision.value
@@ -732,10 +734,10 @@ class IdentifyYeastCells(cpmi.Identify):
         )
 
     def get_ui_params_from_precision(self, ui_precision):
-        def params_to_ui(params, next_name, first_name, random_name):
-            random = params["segmentation"]["seeding"]["from"][random_name]
-            next = params["segmentation"]["seeding"]["from"][next_name]
-            first = params["segmentation"]["seeding"]["from"][first_name]
+        def params_to_ui(params_seeding, next_name, first_name, random_name):
+            random = params_seeding[random_name]
+            next = params_seeding[next_name]
+            first = params_seeding[first_name]
             if random != 0:
                 return random + 1
             elif next and first:
@@ -747,10 +749,13 @@ class IdentifyYeastCells(cpmi.Identify):
             return 0.0
 
         params = default_parameters(self.ui_to_precision_map[ui_precision], 30)
+
         ui_params = [params["segmentation"]["steps"]]
-        ui_params.append(params_to_ui(params, "cellBorderRemovingCurrSegments", "cellBorder", "cellBorderRandom"))
-        ui_params.append(params_to_ui(params, "cellContentRemovingCurrSegments", "cellContent", "cellContentRandom"))
-        ui_params.append(params_to_ui(params, "snakesCentroids", "snakesCentroids", "snakesCentroidsRandom"))
+        params_seeding = params["segmentation"]["seeding"]["from"]
+        ui_params.append(params_to_ui(params_seeding, "cellBorderRemovingCurrSegments", "cellBorder", "cellBorderRandom"))
+        ui_params.append(params_to_ui(params_seeding, "cellContentRemovingCurrSegments", "cellContent", "cellContentRandom"))
+
+        ui_params.append(params_to_ui(params_seeding, "snakesCentroids", "snakesCentroids", "snakesCentroidsRandom"))
 
         ui_params.append(params["segmentation"]["stars"]["points"])
         ui_params.append(1.0 / params["segmentation"]["stars"]["step"])
