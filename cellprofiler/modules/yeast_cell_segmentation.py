@@ -713,7 +713,7 @@ class IdentifyYeastCells(cpmi.Identify):
         def update_params(next_name, first_name, random_name, ui_value):
             params["segmentation"]["seeding"]["from"][next_name] = ui_value >= 1 or ui_value <= 0.5
             params["segmentation"]["seeding"]["from"][first_name] = ui_value > 0.5
-            params["segmentation"]["seeding"]["from"][random_name] = ui_value - 1
+            params["segmentation"]["seeding"]["from"][random_name] = max(0, ui_value - 1)
 
         params_seeding = params["segmentation"]["seeding"]["from"]
         params["segmentation"]["steps"] = self.iterations.value
@@ -723,7 +723,7 @@ class IdentifyYeastCells(cpmi.Identify):
         params_seeding["cellContentRemovingCurrSegmentsRandom"] = params_seeding["cellContentRandom"]
 
         params["segmentation"]["seeding"]["from"]["snakesCentroids"] = self.seeds_centroid.value > 0.0
-        params["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = self.seeds_centroid.value - 1
+        params["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = max(0, self.seeds_centroid.value - 1)
 
         params["segmentation"]["stars"]["points"] = self.contour_points.value
         params["segmentation"]["stars"]["step"] = 1.0 / self.contour_precision.value
