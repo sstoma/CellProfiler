@@ -124,3 +124,27 @@ class test_CellStar(unittest.TestCase):
         res_1 = list(values_1)
         calc_util.interpolate_radiuses(mask_1, len(mask_1), res_1)
         self.assertEqual([8, 9, 10, 12, 14, 6, 7], res_1)
+
+    def test_gt_snake_seeds(self):
+        from contrib.cell_star.parameter_fitting.pf_snake import *
+        from contrib.cell_star.parameter_fitting.pf_process import *
+        mask = np.zeros((20,20))
+        mask[3:8, 5:14] = 1
+        mask[7:13, 7:10] = 1
+
+        eroded_mask = np.zeros((20,20))
+        eroded_mask[4:7, 6:13] = 1
+        eroded_mask[7:12, 8] = 1
+
+        gtsnake = GTSnake(mask, Seed(7,5,"test"))
+        self.assertTrue((eroded_mask == gtsnake.eroded_mask).all())
+        self.assertTrue(gtsnake.is_inside(6, 4))
+        self.assertTrue(gtsnake.is_inside(8, 7))
+        self.assertTrue(gtsnake.is_inside(11, 5))
+        self.assertFalse(gtsnake.is_inside(5, 4))
+        self.assertFalse(gtsnake.is_inside(9, 7))
+        self.assertFalse(gtsnake.is_inside(8, 12))
+
+        # test if inside
+        randoms = get_gt_snake_seeds(gtsnake, 10, 5)
+        self.assertTrue(all([gtsnake.is_inside(r.x, r.y) for r in randoms]))

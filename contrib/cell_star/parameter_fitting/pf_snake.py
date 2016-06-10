@@ -5,6 +5,7 @@ import copy
 import random
 random.seed(1)  # make it deterministic
 import numpy as np
+import scipy.ndimage.morphology as morph
 import scipy.ndimage.measurements as measure
 
 from contrib.cell_star.core.seed import Seed
@@ -101,9 +102,9 @@ class PFSnake(object):
 
 
 class GTSnake(object):
-
     def __init__(self, binary_mask, seed=None):
         self.binary_mask = binary_mask
+        self.eroded_mask = morph.binary_erosion(binary_mask, np.ones((3, 3)))
         self.area = np.count_nonzero(self.binary_mask)
         if seed is not None:
             self.seed = seed
@@ -114,3 +115,10 @@ class GTSnake(object):
 
     def _calculate_centroids(self, binary_mask):
         self.centroid_y, self.centroid_x = measure.center_of_mass(binary_mask, binary_mask, [1])[0]
+
+    def is_inside(self, x, y):
+        """
+        Check if seed is inside of eroded mask.
+        @type seed: Seed
+        """
+        return self.eroded_mask[y, x]

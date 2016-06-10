@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.seed import Seed
 from contrib.cell_star.core.image_repo import ImageRepo
-from contrib.cell_star.parameter_fitting.pf_snake import PFSnake
+from contrib.cell_star.parameter_fitting.pf_snake import PFSnake, GTSnake
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.process.segmentation import Segmentation
 from contrib.cell_star.utils.debug_util import image_show, image_save
@@ -96,8 +96,20 @@ def snakes_fitness(gt_snake_seed_pairs, images, parameters, pf_param_vector, deb
 
 
 def get_gt_snake_seeds(gt_snake, times=3, radius=5):
-    seed = [Seed(gt_snake.centroid_x, gt_snake.centroid_y, "optimize_star_parameters")]
-    return seed + Seeder.rand_seeds(radius, times, seed)
+    """
+    Create random seeds inside gt snake.
+    @type gt_snake: GTSnake
+    """
+    seed = Seed(gt_snake.centroid_x, gt_snake.centroid_y, "optimize_star_parameters")
+    seeds = [seed]
+    left = times
+    while left > 0:
+        random_seeds = Seeder.rand_seeds(radius, left, [seed])
+        inside_seeds = [s for s in random_seeds if gt_snake.is_inside(s.x, s.y)]
+        seeds += inside_seeds
+        left = times - (len(seeds) - 1)
+
+    return seeds
 
 
 def get_size_weight_list(params):
@@ -108,7 +120,8 @@ def get_size_weight_list(params):
 
 
 def pf_get_distance(gt_snakes, images, initial_parameters, callback = keep_3_best):
-    gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in get_gt_snake_seeds(gt_snake)]
+    radius = initial_parameters["segmentation"]["seeding"]["randomDiskRadius"] * initial_parameters["segmentation"]["avgCellDiameter"]
+    gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in get_gt_snake_seeds(gt_snake, radius=radius)]
     random.shuffle(gt_snake_seed_pairs)
     pick_seed_pairs = max(min_number_of_chosen_seeds, max_number_of_chosen_snakes / len(
         initial_parameters["segmentation"]["stars"]["sizeWeight"]))
