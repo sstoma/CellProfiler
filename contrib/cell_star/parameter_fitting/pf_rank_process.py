@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
+from contrib.cell_star.utils.debug_util import explore_cellstar
 from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, general_multiproc_fitting
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode
@@ -182,6 +183,10 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
 
     gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all)
     ranked_snakes = zip(*gts_snakes_with_mutations)[1]
+
+    explore_cellstar(image=images.image, images=images, params=params,
+                                  seeds=[sp[0].seed for sp in gt_snake_grown_seed_pairs_all],
+                                  snakes=[sp[1].grown_snake for sp in gt_snake_grown_seed_pairs_all])
 
     calculations = 0
     best_params_encoded, distance = optimize(

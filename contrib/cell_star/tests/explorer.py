@@ -25,7 +25,7 @@ from contrib.cell_star.tests.experiments import *
 
 class Explorer:
     cell_star_smoothing = Snake.smooth_contour
-    def __init__(self, image, images, ui, cell_star):
+    def __init__(self, image, images, ui, cell_star, params=None):
         """
         @type cell_star: Segmentation
         """
@@ -34,9 +34,17 @@ class Explorer:
         self.ui = ui
         self.ui.onclick = self.manage_click
         self.ui.press = self.manage_press
-        self.cell_star = cell_star
+        if cell_star is None:
+            self.cell_star = Segmentation(11, params["segmentation"]["avgCellDiameter"])
+            self.cell_star.parameters = params
+            self.cell_star.set_frame(image)
+            self.cell_star.images = images
+        else:
+            self.cell_star = cell_star
         self.clear()
         self.smoothing = self.cell_star_smoothing
+        self.stick_seeds = []
+        self.stick_snakes = []
 
     def no_smoothing(self, radius, max_diff, points_number, f_tot):
         xmins2 = np.copy(radius)
@@ -80,6 +88,9 @@ class Explorer:
             Snake.smooth_contour = self.smoothing
             for pfsnake in to_regrow:
                 self.grow_and_show(pfsnake.seed.x, pfsnake.seed.y)
+        if key <= 'z':
+            draw_snakes_on_axes(sorted(self.stick_snakes, key=lambda s: -s.rank), self.ui.axes)
+            draw_seeds_on_axes(self.stick_seeds, self.ui.axes)
 
     def grow_and_show(self, x, y):
         pfsnake = PFSnake(Seed(x, y, "click"), self.images, self.cell_star.parameters)

@@ -22,7 +22,7 @@ from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.parameter_fitting.pf_snake import PFSnake, GTSnake
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.process.segmentation import Segmentation
-from contrib.cell_star.utils.debug_util import image_show, image_save
+from contrib.cell_star.utils.debug_util import image_show, image_save, explore_cellstar
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode, parameters_range
 
 import cellprofiler.preferences
@@ -133,6 +133,10 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=keep_3_best
     pick_seed_pairs = max(min_number_of_chosen_seeds, max_number_of_chosen_snakes /
                           len(initial_parameters["segmentation"]["stars"]["sizeWeight"]))
     chosen_gt_snake_seed_pairs = gt_snake_seed_pairs[:pick_seed_pairs]
+
+    explore_cellstar(image=images.image, images=images, params=initial_parameters,
+                                  seeds=[sp[1] for sp in chosen_gt_snake_seed_pairs],
+                                  snakes=[])
 
     def create_distance_function(pairs_to_use):
         def distance(partial_parameters, debug=False):

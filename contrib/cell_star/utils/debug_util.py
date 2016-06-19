@@ -134,21 +134,33 @@ def draw_overlay(image, x, y):
         plt.close(fig)
 
 
-def explore_cellstar(cellstar):
+def explore_cellstar(cellstar=None, seeds=[], snakes=[], images=None, image=None, params=None):
     if DEBUGING:
         check_state = check_caps_scroll_state()
         if EXPLORE or check_state[0] == True and check_state[1] == True:
             value = 0
             try:
-                #import wx
-                #app = wx.App(0)
+                app = None
+                try:
+                    import wx
+                    app = wx.App(0)
+                except:
+                    pass
 
                 import contrib.cell_star.tests.explorer as exp
-                explorer_ui = exp.ExplorerFrame(images=cellstar.images)
-                explorer = exp.Explorer(cellstar.images.image, cellstar.images, explorer_ui, cellstar)
+                explorer_ui = exp.ExplorerFrame(images=images or cellstar.images)
+                if image is None:
+                    image = cellstar.images.image
+                if images is None:
+                    images = cellstar.images
+
+                explorer = exp.Explorer(image, images, explorer_ui, cellstar, params)
+                explorer.stick_seeds = seeds
+                explorer.stick_snakes = snakes
                 value = explorer_ui.ShowModal()
 
-                #app.MainLoop()
+                #if app is not None:
+                #    app.MainLoop()
             except Exception as ex:
                 print ex
                 pass
