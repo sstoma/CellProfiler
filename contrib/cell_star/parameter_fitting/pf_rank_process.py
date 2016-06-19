@@ -185,8 +185,8 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     ranked_snakes = zip(*gts_snakes_with_mutations)[1]
 
     explore_cellstar(image=images.image, images=images, params=params,
-                                  seeds=[sp[0].seed for sp in gt_snake_grown_seed_pairs_all],
-                                  snakes=[sp[1].grown_snake for sp in gt_snake_grown_seed_pairs_all])
+                                  seeds=[sp[0].seed for sp in gts_snakes_with_mutations],
+                                  snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
 
     calculations = 0
     best_params_encoded, distance = optimize(
