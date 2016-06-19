@@ -80,8 +80,12 @@ def run_pf(input_image, background_image, ignore_mask_image, gt_label, parameter
     return best_complete_params, best_score
 
 
-def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None):
+def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None, options=None):
     frame = try_load_image(image_path)
+
+    if options == 'invert':
+        frame = 1 - frame
+
     gt_image = np.array(try_load_image(mask_path) * 255, dtype=int)
 
     gt_mask = image_to_label(gt_image)
@@ -90,8 +94,11 @@ def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial
     return run(frame, gt_snakes, precision, avg_cell_diameter, method, initial_params=initial_params)
 
 
-def test_parameters(image_path, mask_path, precision, avg_cell_diameter, params, output_path=None):
+def test_parameters(image_path, mask_path, precision, avg_cell_diameter, params, output_path=None, options=None):
     frame = try_load_image(image_path)
+
+    if options == 'invert':
+        frame = 1 - frame
     #gt_image = np.array(try_load_image(mask_path) * 255, dtype=int)
 
     #cropped_image, cropped_gt_label = cropped_to_gt(avg_cell_diameter, frame, gt_image)

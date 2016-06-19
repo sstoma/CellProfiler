@@ -40,8 +40,12 @@ def run_rank_pf(input_image, background_image, ignore_mask_image, gt_mask, param
     return best_complete_params, best_score
 
 
-def test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None):
+def test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None, options=None):
     frame = try_load_image(image_path)
+
+    if options == 'invert':
+        frame = 1 - frame
+
     gt_image = np.array(try_load_image(mask_path) * 255, dtype=int)
 
     gt_mask = image_to_label(gt_image)

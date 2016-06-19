@@ -119,24 +119,34 @@ def get_size_weight_list(params):
     return l
 
 
-def pf_get_distance(gt_snakes, images, initial_parameters, callback = keep_3_best):
-    radius = initial_parameters["segmentation"]["seeding"]["randomDiskRadius"] * initial_parameters["segmentation"]["avgCellDiameter"]
-    gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in get_gt_snake_seeds(gt_snake, radius=radius)]
+def prepare_snake_seed_pairs(gt_snakes, initial_parameters):
+    radius = initial_parameters["segmentation"]["seeding"]["randomDiskRadius"] * initial_parameters["segmentation"][
+        "avgCellDiameter"]
+    gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
+                           get_gt_snake_seeds(gt_snake, radius=radius)]
     random.shuffle(gt_snake_seed_pairs)
-    pick_seed_pairs = max(min_number_of_chosen_seeds, max_number_of_chosen_snakes / len(
-        initial_parameters["segmentation"]["stars"]["sizeWeight"]))
-    gt_snake_seed_pairs = gt_snake_seed_pairs[:pick_seed_pairs]
+    return gt_snake_seed_pairs
 
-    def distance(partial_parameters, debug=False):
-        current_distance = distance_norm(
-            snakes_fitness(gt_snake_seed_pairs, images, initial_parameters, partial_parameters, debug=debug)
-        )
-        if callback is not None:
-            callback(partial_parameters, current_distance)
 
-        return current_distance
+def pf_get_distances(gt_snakes, images, initial_parameters, callback=keep_3_best):
+    gt_snake_seed_pairs = prepare_snake_seed_pairs(gt_snakes, initial_parameters)
+    pick_seed_pairs = max(min_number_of_chosen_seeds, max_number_of_chosen_snakes /
+                          len(initial_parameters["segmentation"]["stars"]["sizeWeight"]))
+    chosen_gt_snake_seed_pairs = gt_snake_seed_pairs[:pick_seed_pairs]
 
-    return distance
+    def create_distance_function(pairs_to_use):
+        def distance(partial_parameters, debug=False):
+            current_distance = distance_norm(
+                snakes_fitness(pairs_to_use, images, initial_parameters, partial_parameters, debug=debug)
+            )
+            if callback is not None:
+                callback(partial_parameters, current_distance)
+
+            return current_distance
+
+        return distance
+
+    return create_distance_function(gt_snake_seed_pairs), create_distance_function(chosen_gt_snake_seed_pairs)
 
 
 #
@@ -208,8 +218,10 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
 
 def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diameter):
     encoded_params = pf_parameters_encode(params)
-    distance_function = pf_get_distance(gt_snakes, images, params)
-    initial_distance = distance_function(encoded_params)
+    complete_distance, fast_distance = pf_get_distances(gt_snakes, images, params)
+    initial_distance = fast_distance(encoded_params)
+    initial_complete_distance = complete_distance(encoded_params)
+    logger.debug("Initial parameters complete-distance is (%f)." % (initial_complete_distance))
     logger.debug("Initial parameters distance is (%f)." % (initial_distance))
     logger.debug("Initial parameters are %s." % params)
     if method_name == "mp" and getattr(sys, "frozen", False) and sys.platform == 'win32':
@@ -221,32 +233,34 @@ def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diamete
         # return fitted_params, score
     else:
         if method_name == 'brute':
-            best_params_encoded, distance = optimize_brute(encoded_params, distance_function)
+            best_params_encoded, distance = optimize_brute(encoded_params, fast_distance)
         elif method_name == 'brutemaxbasin':
-            best_params_encoded, distance = optimize_brute(encoded_params, distance_function)
+            best_params_encoded, distance = optimize_brute(encoded_params, fast_distance)
             logger.debug("Best grid parameters distance is (%f)." % distance)
-            best_params_encoded, distance = optimize_basinhopping(best_params_encoded, distance_function, time_percent=100)
+            best_params_encoded, distance = optimize_basinhopping(best_params_encoded, fast_distance, time_percent=100)
         elif method_name == 'brutemax3basin':
-            _, _ = optimize_brute(encoded_params, distance_function)
+            _, _ = optimize_brute(encoded_params, fast_distance)
             logger.debug("Best grid parameters distance are %s." %  str(zip(*best_3)[0]))
             logger.debug("Best grid parameters parameters are %s." %  str(zip(*best_3)[1]))
 
             best_basins = []
             for candidate in list(best_3):
-                best_basins.append(optimize_basinhopping(candidate[1], distance_function, time_percent = 33))
+                best_basins.append(optimize_basinhopping(candidate[1], fast_distance, time_percent = 33))
             best_basins.sort(key=lambda x: x[1])
 
             best_params_encoded, distance = best_basins[0]
         elif method_name == 'basin':
-            best_params_encoded, distance = optimize_basinhopping(encoded_params, distance_function)
+            best_params_encoded, distance = optimize_basinhopping(encoded_params, fast_distance)
         elif method_name == 'diffevo':
-            best_params_encoded, distance = optimize_de(encoded_params, distance_function)
+            best_params_encoded, distance = optimize_de(encoded_params, fast_distance)
 
-    if initial_distance <= distance:
-        logger.debug("Initial parameters (%f) are not worse than the best found (%f)." % (initial_distance, distance))
-        return encoded_params, initial_distance
+    complete_distance = complete_distance(best_params_encoded)
+    logger.debug("Final parameters complete-distance is (%f)." % (complete_distance))
+    if initial_complete_distance <= complete_distance:
+        logger.debug("Initial parameters (%f) are not worse than the best found (%f)." % (initial_complete_distance, complete_distance))
+        return encoded_params, initial_complete_distance
     else:
-        return best_params_encoded, distance
+        return best_params_encoded, complete_distance
 
 
 def optimize_brute(params_to_optimize, distance_function):
