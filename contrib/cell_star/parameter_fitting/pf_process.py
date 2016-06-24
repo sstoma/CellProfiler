@@ -95,7 +95,7 @@ def snakes_fitness(gt_snake_seed_pairs, images, parameters, pf_param_vector, deb
 #
 
 
-def get_gt_snake_seeds(gt_snake, times=3, radius=5):
+def get_gt_snake_seeds(gt_snake, times=3, radius=5, min_radius=0):
     """
     Create random seeds inside gt snake.
     @type gt_snake: GTSnake
@@ -104,10 +104,11 @@ def get_gt_snake_seeds(gt_snake, times=3, radius=5):
     seeds = [seed]
     left = times
     while left > 0:
-        random_seeds = Seeder.rand_seeds(radius, left, [seed])
+        random_seeds = Seeder.rand_seeds(radius, left, [seed], min_random_radius=min_radius)
         inside_seeds = [s for s in random_seeds if gt_snake.is_inside(s.x, s.y)]
         seeds += inside_seeds
         left = times - (len(seeds) - 1)
+        min_radius /= 1.2 # make sure that it finish
 
     return seeds
 
@@ -123,7 +124,7 @@ def prepare_snake_seed_pairs(gt_snakes, initial_parameters):
     radius = initial_parameters["segmentation"]["seeding"]["randomDiskRadius"] * initial_parameters["segmentation"][
         "avgCellDiameter"]
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, times=3, radius=radius)]
+                           get_gt_snake_seeds(gt_snake, times=3, radius=radius, min_radius=2*radius/3.0)]
     random.shuffle(gt_snake_seed_pairs)
     return gt_snake_seed_pairs
 

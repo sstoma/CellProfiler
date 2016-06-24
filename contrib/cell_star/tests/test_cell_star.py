@@ -27,7 +27,13 @@ class test_CellStar(unittest.TestCase):
 
         seed3 = Seed(0, 0, 'test3')
         new_zero_seeds = Seeder.rand_seeds(10, 10, [seed3])
+        self.assertTrue(any([seed.euclidean_distance_to(Point(0, 0)) < 5 for seed in new_zero_seeds]))
         self.assertTrue(all([seed.euclidean_distance_to(Point(0, 0)) < 10 for seed in new_zero_seeds]))
+
+        # random seeds minimum value
+        seed3 = Seed(0, 0, 'test3')
+        new_zero_seeds = Seeder.rand_seeds(10, 10, [seed3], 5)
+        self.assertTrue(all([seed.euclidean_distance_to(Point(0, 0)) >= 5 for seed in new_zero_seeds]))
 
     def test_random_seeds_fractions(self):
         from contrib.cell_star.core.seed import Seed

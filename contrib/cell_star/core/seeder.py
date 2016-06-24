@@ -82,10 +82,11 @@ class Seeder(object):
         return seed_points
 
     @staticmethod
-    def rand_seeds(max_random_radius, times, seeds):
+    def rand_seeds(max_random_radius, times, seeds, min_random_radius=0):
         """
         @type seeds: list[Seed]
         """
+
         seeds_number = len(seeds)
         new_seeds_number = int(seeds_number * times)
 
@@ -95,7 +96,7 @@ class Seeder(object):
         py = multiply_list([s.y for s in shuffled_seeds], times)
 
         random_angle = np.random.random(new_seeds_number) * 2 * math.pi
-        random_radius = np.random.random(new_seeds_number) * max_random_radius
+        random_radius = np.random.random(new_seeds_number) * (max_random_radius - min_random_radius) + min_random_radius
 
         rpx = px + random_radius * np.cos(random_angle)
         rpy = py + random_radius * np.sin(random_angle)

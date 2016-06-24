@@ -179,7 +179,7 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     encoded_star_params = pf_parameters_encode(params)
     radius = params["segmentation"]["seeding"]["randomDiskRadius"] * params["segmentation"]["avgCellDiameter"]
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, radius=radius, times=8)]
+                           get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=2*radius/3.0)]
     gt_snake_grown_seed_pairs = \
         [(gt_snake, grow_single_seed(seed, images, params, encoded_star_params)) for gt_snake, seed in
          gt_snake_seed_pairs]
