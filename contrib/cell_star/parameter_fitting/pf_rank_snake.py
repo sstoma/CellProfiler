@@ -30,8 +30,13 @@ class PFRankSnake(object):
     def create_all(gt_snake, grown_pf_snake, params):
         return [(gt_snake, PFRankSnake(gt_snake, snake, grown_pf_snake.avg_cell_diameter, params)) for snake in grown_pf_snake.snakes]
 
-    def create_mutation(self, dilation, rand_range=[0, 0]):
-        return pf_mutator.create_mutation(self, dilation, rand_range)
+    def create_mutation(self, dilation, random_poly=False):
+        if random_poly:
+            mutant = pf_mutator.create_poly_mutation(self.grown_snake, self.polar_transform, dilation)
+        else:
+            mutant = pf_mutator.create_mutation(self.grown_snake, self.polar_transform, dilation)
+        return PFRankSnake(self.gt_snake, mutant, self.avg_cell_diameter, self.initial_parameters)
+
 
     @staticmethod
     def merge_rank_parameters(initial_parameters, new_params):

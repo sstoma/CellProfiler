@@ -22,6 +22,7 @@ from contrib.cell_star.utils.debug_util import explore_cellstar
 from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, general_multiproc_fitting
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode
+from contrib.cell_star.parameter_fitting.pf_mutator import *
 
 import cellprofiler.preferences
 get_max_workers = cellprofiler.preferences.get_max_workers
@@ -62,7 +63,7 @@ def distance_smooth_norm(expected, result):
     """
     global best_so_far, calculations
     n = result.size
-    differences = abs(expected - result) * np.arange(n*3, 0, -3) ** 2
+    differences = abs(expected - result) ** 3 * np.arange(n*3, 0, -3)
     distance = norm(differences) / np.sqrt(n)
 
     best_so_far = min(best_so_far, distance)
@@ -83,10 +84,7 @@ def distance_norm_list(expected, result):
     exp_position = dict([(obj, i) for (i, obj) in enumerate(expected)])
     given_position = dict([(obj, i) for (i, obj) in enumerate(result)])
     positions = enumerate(result)
-    distance = sum([abs(exp_position[obj] - i) ** 2 / (exp_position[obj]+1)**5 for (i, obj) in positions]) / maximal_distance(length)  # scaling to [0,1]
-    distance = given_position[expected[0]]
-    distance = sum([abs(given_position[obj] - i) / ((i+1.0)**20) * (i>=0) for (i, obj) in enumerate(expected)]) #/ maximal_distance(length)  # scaling to [0,1]
-
+    distance = sum([abs(exp_position[obj] - i) ** 2 / (exp_position[obj]+1)**2 for (i, obj) in positions]) / maximal_distance(length)  # scaling to [0,1]
 
     best_so_far = min(best_so_far, distance)
     calculations += 1
@@ -117,25 +115,6 @@ def pf_rank_get_ranking(rank_snakes, initial_parameters):
         )
 
     return fitness
-
-
-#
-#
-# PREPARE DATA
-#
-#
-
-
-def add_mutations(gt_and_grown, avg_cell_diameter):
-    mutants = []
-    for (gt, grown) in gt_and_grown:
-        mutants += [#(gt, grown.create_mutation(3, rand_range=(-20, 20))), (gt, grown.create_mutation(-3, rand_range=(-20, 20))),
-                    (gt, grown.create_mutation(10)), (gt, grown.create_mutation(-10)),
-                    #(gt, grown.create_mutation(3, rand_range=(-5, 5))),
-                    #(gt, grown.create_mutation(-3, rand_range=(-5, 5)))
-                    ]
-    return gt_and_grown + mutants
-
 
 #
 #
@@ -200,7 +179,7 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     encoded_star_params = pf_parameters_encode(params)
     radius = params["segmentation"]["seeding"]["randomDiskRadius"] * params["segmentation"]["avgCellDiameter"]
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, radius=radius, times=16)]
+                           get_gt_snake_seeds(gt_snake, radius=radius, times=8)]
     gt_snake_grown_seed_pairs = \
         [(gt_snake, grow_single_seed(seed, images, params, encoded_star_params)) for gt_snake, seed in
          gt_snake_seed_pairs]
