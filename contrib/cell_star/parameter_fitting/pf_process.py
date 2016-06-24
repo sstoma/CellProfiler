@@ -123,7 +123,7 @@ def prepare_snake_seed_pairs(gt_snakes, initial_parameters):
     radius = initial_parameters["segmentation"]["seeding"]["randomDiskRadius"] * initial_parameters["segmentation"][
         "avgCellDiameter"]
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, radius=radius)]
+                           get_gt_snake_seeds(gt_snake, times=3, radius=radius)]
     random.shuffle(gt_snake_seed_pairs)
     return gt_snake_seed_pairs
 
@@ -135,7 +135,7 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=keep_3_best
     chosen_gt_snake_seed_pairs = gt_snake_seed_pairs[:pick_seed_pairs]
 
     explore_cellstar(image=images.image, images=images, params=initial_parameters,
-                                  seeds=[sp[1] for sp in chosen_gt_snake_seed_pairs],
+                                  seeds=[sp[1] for sp in gt_snake_seed_pairs],
                                   snakes=[])
 
     def create_distance_function(pairs_to_use):
@@ -159,10 +159,13 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=keep_3_best
 #
 #
 
-def test_trained_parameters(image, star_params, precision, avg_cell_diameter, output_name=None):
+def test_trained_parameters(image, star_params, ranking_params, precision, avg_cell_diameter, output_name=None):
     seg = Segmentation(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
     for k, v in star_params.iteritems():
         seg.parameters["segmentation"]["stars"][k] = v
+    for k, v in ranking_params.iteritems():
+        seg.parameters["segmentation"]["ranking"][k] = v
+
     seg.set_frame(image)
     seg.run_segmentation()
     if output_name is None:

@@ -10,6 +10,7 @@ from contrib.cell_star.core.polar_transform import PolarTransform
 from contrib.cell_star.utils.calc_util import polar_to_cartesian
 from contrib.cell_star.core.point import Point
 from contrib.cell_star.parameter_fitting.pf_snake import PFSnake
+import pf_mutator
 
 
 class PFRankSnake(object):
@@ -30,31 +31,7 @@ class PFRankSnake(object):
         return [(gt_snake, PFRankSnake(gt_snake, snake, grown_pf_snake.avg_cell_diameter, params)) for snake in grown_pf_snake.snakes]
 
     def create_mutation(self, dilation, rand_range=[0, 0]):
-        mutant_snake = copy.copy(self.grown_snake)
-        # zero rank so it recalculates
-        mutant_snake.rank = None
-
-        # change to pixels
-        dilation /= self.polar_transform.step
-        boundary_change = np.array([dilation + random.randrange(rand_range[0], rand_range[1] + 1)
-                                    for _ in range(mutant_snake.polar_coordinate_boundary.size)])
-
-        new_boundary = np.array(1)
-        while (new_boundary <= 3).all() and abs(boundary_change.max()) > 3:
-            new_boundary = np.maximum(np.minimum(
-                mutant_snake.polar_coordinate_boundary + boundary_change,
-                len(self.polar_transform.R) - 1), 3)
-            boundary_change /= 1.3
-
-        px, py = polar_to_cartesian(new_boundary, mutant_snake.seed.x, mutant_snake.seed.y, self.polar_transform)
-
-        mutant_snake.polar_coordinate_boundary = new_boundary
-        mutant_snake.points = [Point(x, y) for x, y in zip(px, py)]
-
-        # TODO need to update self.final_edgepoints to calculate properties (for now we ignore this property)
-        mutant_snake.calculate_properties_vec(self.polar_transform)
-
-        return PFRankSnake(self.gt_snake,mutant_snake,self.avg_cell_diameter,self.initial_parameters)
+        return pf_mutator.create_mutation(self, dilation, rand_range)
 
     @staticmethod
     def merge_rank_parameters(initial_parameters, new_params):

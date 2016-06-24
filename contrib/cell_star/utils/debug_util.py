@@ -108,6 +108,7 @@ def image_save(image, title):
         return file_path
     return None
 
+
 def image_show(image, title, override=False):
     """
     Displays image with title using matplotlib.pyplot
@@ -134,40 +135,45 @@ def draw_overlay(image, x, y):
         plt.close(fig)
 
 
-def explore_cellstar(cellstar=None, seeds=[], snakes=[], images=None, image=None, params=None):
+def explorer_expected():
     if DEBUGING:
         check_state = check_caps_scroll_state()
         if EXPLORE or check_state[0] == True and check_state[1] == True:
-            value = 0
+            return True
+    return False
+
+
+def explore_cellstar(cellstar=None, seeds=[], snakes=[], images=None, image=None, params=None):
+    if explorer_expected():
+        value = 0
+        try:
+            app = None
             try:
-                app = None
-                try:
-                    import wx
-                    app = wx.App(0)
-                except:
-                    pass
-
-                import contrib.cell_star.tests.explorer as exp
-                explorer_ui = exp.ExplorerFrame(images=images or cellstar.images)
-                if image is None:
-                    image = cellstar.images.image
-                if images is None:
-                    images = cellstar.images
-
-                explorer = exp.Explorer(image, images, explorer_ui, cellstar, params)
-                explorer.stick_seeds = seeds
-                explorer.stick_snakes = snakes
-                value = explorer_ui.ShowModal()
-
-                #if app is not None:
-                #    app.MainLoop()
-            except Exception as ex:
-                print ex
+                import wx
+                app = wx.App(0)
+            except:
                 pass
 
-            if value == exp.ExplorerFrame.ABORTED:
-                raise Exception("Execution aborted")
+            import contrib.cell_star.tests.explorer as exp
+            if image is None:
+                image = cellstar.images.image
+            if images is None:
+                images = cellstar.images
 
+            explorer_ui = exp.ExplorerFrame(images)
+            explorer = exp.Explorer(image, images, explorer_ui, cellstar, params)
+            explorer.stick_seeds = seeds
+            explorer.stick_snakes = snakes
+            value = explorer_ui.ShowModal()
+
+            #if app is not None:
+            #    app.MainLoop()
+        except Exception as ex:
+            print ex
+            pass
+
+        if value == exp.ExplorerFrame.ABORTED:
+            raise Exception("Execution aborted")
 
 
 def draw_snakes_on_axes(snakes, axes, outliers=.1):

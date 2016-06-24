@@ -5,11 +5,10 @@ import copy
 import operator as op
 import random
 import time
-from multiprocessing import Process, Queue
 
 import numpy as np
-from numpy import linalg
 import scipy.optimize as opt
+from scipy.linalg import norm
 
 random.seed(1)
 np.random.seed(1)
@@ -54,6 +53,24 @@ def maximal_distance(n):
     l = n - 1
     return l*(l+1)*(l+2)/6.0 * 2
 
+def distance_smooth_norm(expected, result):
+    """
+    Calculates 2-norm from difference in fitness between expected and given snakes
+    @param expected: array of expected fitness
+    @param result: array of given fitness
+    @return:
+    """
+    global best_so_far, calculations
+    n = result.size
+    differences = abs(expected - result) * np.arange(n*3, 0, -3) ** 2
+    distance = norm(differences) / np.sqrt(n)
+
+    best_so_far = min(best_so_far, distance)
+    calculations += 1
+
+    show_progress(distance, calculations)
+    return distance
+
 def distance_norm_list(expected, result):
     """
     Calculates number of derangments between two sequences
@@ -64,8 +81,13 @@ def distance_norm_list(expected, result):
     global best_so_far, calculations
     length = len(expected)
     exp_position = dict([(obj, i) for (i, obj) in enumerate(expected)])
+    given_position = dict([(obj, i) for (i, obj) in enumerate(result)])
     positions = enumerate(result)
-    distance = sum([abs(exp_position[obj] - i) ** 2 for (i, obj) in positions]) / maximal_distance(length)  # scaling to [0,1]
+    distance = sum([abs(exp_position[obj] - i) ** 2 / (exp_position[obj]+1)**5 for (i, obj) in positions]) / maximal_distance(length)  # scaling to [0,1]
+    distance = given_position[expected[0]]
+    distance = sum([abs(given_position[obj] - i) / ((i+1.0)**20) * (i>=0) for (i, obj) in enumerate(expected)]) #/ maximal_distance(length)  # scaling to [0,1]
+
+
     best_so_far = min(best_so_far, distance)
     calculations += 1
 
@@ -80,10 +102,16 @@ def calc_ranking(rank_snakes, pf_param_vector):
     #logger.debug(sorted(pf_rank_parameters_decode(pf_param_vector).iteritems()))
     return distance_norm_list(fitness_order, ranking_order)
 
+def calc_smooth_ranking(rank_snakes, pf_param_vector):
+    rank_params_decoded = pf_rank_parameters_decode(pf_param_vector)
+    fitness_order = np.array([r.fitness for r in sorted(rank_snakes, key=lambda x: -x.fitness)])
+    ranking_order = np.array([r.fitness for r in sorted(rank_snakes, key=lambda x: x.calculate_ranking(rank_params_decoded))])
+    return distance_smooth_norm(fitness_order, ranking_order)
+
 
 def pf_rank_get_ranking(rank_snakes, initial_parameters):
     fitness = lambda partial_parameters, debug=False: \
-        calc_ranking(
+        calc_smooth_ranking(
             rank_snakes,
             partial_parameters
         )
@@ -98,10 +126,10 @@ def pf_rank_get_ranking(rank_snakes, initial_parameters):
 #
 
 
-def add_mutations(gt_and_grown):
+def add_mutations(gt_and_grown, avg_cell_diameter):
     mutants = []
     for (gt, grown) in gt_and_grown:
-        mutants += [(gt, grown.create_mutation(20)), (gt, grown.create_mutation(-20)),
+        mutants += [#(gt, grown.create_mutation(3, rand_range=(-20, 20))), (gt, grown.create_mutation(-3, rand_range=(-20, 20))),
                     (gt, grown.create_mutation(10)), (gt, grown.create_mutation(-10)),
                     #(gt, grown.create_mutation(3, rand_range=(-5, 5))),
                     #(gt, grown.create_mutation(-3, rand_range=(-5, 5)))
@@ -172,7 +200,7 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     encoded_star_params = pf_parameters_encode(params)
     radius = params["segmentation"]["seeding"]["randomDiskRadius"] * params["segmentation"]["avgCellDiameter"]
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, radius=radius, times=8)]
+                           get_gt_snake_seeds(gt_snake, radius=radius, times=16)]
     gt_snake_grown_seed_pairs = \
         [(gt_snake, grow_single_seed(seed, images, params, encoded_star_params)) for gt_snake, seed in
          gt_snake_seed_pairs]
@@ -181,11 +209,11 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
                                            [PFRankSnake.create_all(gt, grown, params) for (gt, grown) in
                                             gt_snake_grown_seed_pairs])
 
-    gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all)
+    gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all, avg_cell_diameter)
     ranked_snakes = zip(*gts_snakes_with_mutations)[1]
 
     explore_cellstar(image=images.image, images=images, params=params,
-                                  seeds=[sp[0].seed for sp in gts_snakes_with_mutations],
+                                  seeds=[sp[1].grown_snake.seed for sp in gts_snakes_with_mutations],
                                   snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
 
     calculations = 0
@@ -198,8 +226,12 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     stop = time.clock()
 
     best_params_org = pf_rank_parameters_decode(best_params_encoded)
-    best_params_normalized = pf_rank_parameters_decode(best_params_encoded / linalg.norm(best_params_encoded))
+    best_params_normalized = pf_rank_parameters_decode(best_params_encoded, True)
     best_params_full = PFRankSnake.merge_rank_parameters(params, best_params_normalized)
+
+    explore_cellstar(image=images.image, images=images, params=best_params_full,
+                                  seeds=[sp[1].grown_snake.seed for sp in gts_snakes_with_mutations],
+                                  snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
 
     logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params_org.iteritems())]))
     logger.debug("Best normalized: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params_normalized.iteritems())]))

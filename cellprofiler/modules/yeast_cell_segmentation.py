@@ -176,7 +176,7 @@ try:
     from contrib.cell_star.process.segmentation import Segmentation
     from contrib.cell_star.parameter_fitting.test_pf import run_pf
     from contrib.cell_star.parameter_fitting.test_rank_pf import run_rank_pf
-    from contrib.cell_star.utils.debug_util import memory_profile, speed_profile
+    from contrib.cell_star.utils.debug_util import memory_profile, speed_profile, explorer_expected
 
 except ImportError as e: 
     # in new version 2.12 all the errors are properly shown in console (Windows)
@@ -1036,7 +1036,7 @@ class IdentifyYeastCells(cpmi.Identify):
                                   "Images used in previous pipeline run are available. Do you want to use them for autoadapting?",
                                   "Using pipeline images", wx.YES_NO | wx.ICON_QUESTION) as dlg:
                 use_pipeline = dlg.ShowModal()
-            if use_pipeline == wx.NO:
+            if use_pipeline == wx.ID_NO:
                 pipeline_imagery = None
 
         ### opening file dialogs
@@ -1136,6 +1136,13 @@ class AutoFitterThread(threading.Thread):
         except:
             self.exception = True
             raise
+
+    def start(self):
+        #  check if call on the same thread because of explorer
+        if not explorer_expected():
+            super(AutoFitterThread, self).start()
+        else:
+            self.run()
 
     def kill(self):
         pass

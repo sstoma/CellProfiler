@@ -39,6 +39,8 @@ class Explorer:
             self.cell_star.parameters = params
             self.cell_star.set_frame(image)
             self.cell_star.images = images
+            self.image = self.cell_star.images.image
+            self.images = self.cell_star.images
         else:
             self.cell_star = cell_star
         self.clear()
@@ -88,9 +90,20 @@ class Explorer:
             Snake.smooth_contour = self.smoothing
             for pfsnake in to_regrow:
                 self.grow_and_show(pfsnake.seed.x, pfsnake.seed.y)
-        if key <= 'z':
+        if key == 'z':
             draw_snakes_on_axes(sorted(self.stick_snakes, key=lambda s: -s.rank), self.ui.axes)
             draw_seeds_on_axes(self.stick_seeds, self.ui.axes)
+        elif key == 'Z':
+            self.recalculate_rank(self.cell_star.parameters, self.stick_snakes)
+            draw_snakes_on_axes(sorted(self.stick_snakes, key=lambda s: -s.rank), self.ui.axes)
+            draw_seeds_on_axes(self.stick_seeds, self.ui.axes)
+
+    def recalculate_rank(self, params, snakes):
+        for snake in snakes:
+            if all(snake.polar_coordinate_boundary <= 1):  # minimal step is 1 (see snake_grow)
+                snake.rank = Snake.max_rank
+            else:
+                snake.rank = snake.star_rank(params["segmentation"]["ranking"], params["segmentation"]["avgCellDiameter"])
 
     def grow_and_show(self, x, y):
         pfsnake = PFSnake(Seed(x, y, "click"), self.images, self.cell_star.parameters)

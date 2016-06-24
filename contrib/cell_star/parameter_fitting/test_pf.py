@@ -109,7 +109,7 @@ def test_parameters(image_path, mask_path, precision, avg_cell_diameter, params,
         debug_util.debug_image_path = output_path
         output_name = "trained"
 
-    test_trained_parameters(frame, params["segmentation"]["stars"], precision, avg_cell_diameter, output_name)
+    test_trained_parameters(frame, params["segmentation"]["stars"], params["segmentation"]["ranking"], precision, avg_cell_diameter, output_name)
 
 
 if __name__ == "__main__":

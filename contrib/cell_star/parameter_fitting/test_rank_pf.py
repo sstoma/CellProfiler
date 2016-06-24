@@ -5,10 +5,12 @@ import sys
 
 import numpy as np
 
+import contrib.cell_star.utils.debug_util as debug_util
 import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank
 import contrib.cell_star.parameter_fitting.test_pf as test_pf
 from cellprofiler.preferences import get_max_workers
 from contrib.cell_star.parameter_fitting.test_pf import try_load_image, image_to_label, gt_label_to_snakes
+from contrib.cell_star.utils.params_util import default_parameters
 
 
 def run_rank_pf(input_image, background_image, ignore_mask_image, gt_mask, parameters, callback_progress = None):
@@ -59,7 +61,7 @@ def test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, in
 
 if __name__ == "__main__":
     if len(sys.argv) < 7:
-        print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method"
+        print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method {image_result_path}"
         print "Given: " + " ".join(sys.argv)
         sys.exit(-1)
 
@@ -70,4 +72,20 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.addHandler(ch)
     test_pf.corpus_path = sys.argv[1]
-    test_rank_pf(sys.argv[2], sys.argv[3], int(sys.argv[4]), float(sys.argv[5]), sys.argv[6])
+
+    precision = int(sys.argv[4])
+    avg_cell_diameter = float(sys.argv[5])
+
+    image_result_path = None
+    if len(sys.argv) >= 8:
+        image_result_path = sys.argv[7]
+
+    #complete_params = default_parameters(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
+    complete_params, _, _ = test_rank_pf(sys.argv[2], sys.argv[3], precision, avg_cell_diameter, sys.argv[6])
+
+    print "Best_params:", complete_params
+    print
+
+    debug_util.DEBUGING = True
+    if image_result_path is not None:
+        test_pf.test_parameters(sys.argv[2], sys.argv[3], precision, avg_cell_diameter, complete_params, image_result_path)

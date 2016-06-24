@@ -126,7 +126,6 @@ class test_CellStar(unittest.TestCase):
         self.assertEqual([8, 9, 10, 12, 14, 6, 7], res_1)
 
     def test_gt_snake_seeds(self):
-        from contrib.cell_star.parameter_fitting.pf_snake import *
         from contrib.cell_star.parameter_fitting.pf_process import *
         mask = np.zeros((20,20))
         mask[3:8, 5:14] = 1
@@ -148,3 +147,29 @@ class test_CellStar(unittest.TestCase):
         # test if inside
         randoms = get_gt_snake_seeds(gtsnake, 10, 5)
         self.assertTrue(all([gtsnake.is_inside(r.x, r.y) for r in randoms]))
+
+    def test_rank_param_reversable(self):
+        from contrib.cell_star.parameter_fitting.pf_auto_params import *
+        params = [0.1, 0.3, 0.5, 0.7, 0.9]
+        params_decoded = pf_rank_parameters_decode(params)
+        params_encoded_again = pf_rank_parameters_encode(params_decoded, False)
+        self.assertEqual(params, params_encoded_again)
+
+    def test_rank_param_normalization(self):
+        from contrib.cell_star.parameter_fitting.pf_auto_params import *
+        params = [0.1, 0.3, 0.5, 0.7, 0.9]
+
+        res_org = pf_rank_parameters_decode(params, False)
+        self.assertEqual(0.1 * 600, res_org["avgBorderBrightnessWeight"])
+        self.assertEqual(-50 + (0.3 * 100), res_org["avgInnerBrightnessWeight"])
+        self.assertEqual(-50 + (0.5 * 100), res_org["avgInnerDarknessWeight"])
+        self.assertEqual(5 + (0.7 * 35), res_org["logAreaBonus"])
+        self.assertEqual(-10 + (0.9 * 60), res_org["maxInnerBrightnessWeight"])
+
+        res_scaled = pf_rank_parameters_decode(params, True)
+        scaling_factor = res_scaled["avgBorderBrightnessWeight"] / (0.1 * 600)
+        self.assertEqual(0.1 * 600, res_scaled["avgBorderBrightnessWeight"] / scaling_factor)
+        self.assertEqual(-50 + (0.3 * 100), res_scaled["avgInnerBrightnessWeight"] / scaling_factor)
+        self.assertEqual(-50 + (0.5 * 100), res_scaled["avgInnerDarknessWeight"] / scaling_factor)
+        self.assertAlmostEquals(5 + (0.7 * 35), res_scaled["logAreaBonus"] / scaling_factor)
+        self.assertAlmostEquals(-10 + (0.9 * 60), res_scaled["maxInnerBrightnessWeight"] / scaling_factor)

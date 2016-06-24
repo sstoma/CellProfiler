@@ -2,6 +2,7 @@
 __author__ = 'Adam Kaczmarek, Filip Mróz'
 
 import numpy as np
+from numpy import linalg
 
 # parameters_settings = {
 #     "brightnessWeight": [min, max, scale_down, scale_up]
@@ -78,7 +79,7 @@ def pf_parameters_decode(param_vector, org_size_weights_list, step, avg_cell_dia
     return parameters
 
 
-def pf_rank_parameters_encode(parameters):
+def pf_rank_parameters_encode(parameters, complete_params=True):
     """
     # Set: config.yaml
     # Usage: snake.py - 2 times
@@ -103,7 +104,8 @@ def pf_rank_parameters_encode(parameters):
     stickingWeight: 60 # OPT
     @param parameters: dictionary all params
     """
-    parameters = parameters["segmentation"]["ranking"]
+    if complete_params:
+        parameters = parameters["segmentation"]["ranking"]
     point = []
     for name, (vmin, vmax) in sorted(rank_parameters_range.iteritems()):
         val = parameters[name]
@@ -115,7 +117,7 @@ def pf_rank_parameters_encode(parameters):
     return point
 
 
-def pf_rank_parameters_decode(param_vector):
+def pf_rank_parameters_decode(param_vector, scaling=False):
     """
     @type param_vector: numpy.ndarray
     @return: only ranking parameters as a dict
@@ -126,4 +128,10 @@ def pf_rank_parameters_decode(param_vector):
         rescaled = vmin + val * (vmax - vmin)
         parameters[name] = rescaled
     parameters["stickingWeight"] = 0
+
+    if scaling:
+        normalizer = linalg.norm(parameters.values())
+        for a in parameters.keys():
+            parameters[a] /= normalizer
+
     return parameters
