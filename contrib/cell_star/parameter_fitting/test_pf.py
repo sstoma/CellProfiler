@@ -114,7 +114,7 @@ def test_parameters(image_path, mask_path, precision, avg_cell_diameter, params,
 
 if __name__ == "__main__":
     if len(sys.argv) < 7:
-        print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method"
+        print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method {image_result_path}"
         print "Given: " + " ".join(sys.argv)
         sys.exit(-1)
 
@@ -125,4 +125,18 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.addHandler(ch)
     corpus_path = sys.argv[1]
-    test_pf(sys.argv[2], sys.argv[3], int(sys.argv[4]), float(sys.argv[5]), sys.argv[6])
+    precision = int(sys.argv[4])
+    avg_cell_diameter = float(sys.argv[5])
+
+    image_result_path = None
+    if len(sys.argv) >= 8:
+        image_result_path = sys.argv[7]
+
+    complete_params, _, _ = test_pf(sys.argv[2], sys.argv[3], precision, avg_cell_diameter, sys.argv[6])
+
+    print "Best_params:", complete_params
+    print
+
+    debug_util.DEBUGING = True
+    if image_result_path is not None:
+        test_parameters(sys.argv[2], sys.argv[3], precision, avg_cell_diameter, complete_params, image_result_path)
