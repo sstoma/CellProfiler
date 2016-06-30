@@ -99,8 +99,18 @@ class Segmentation(object):
         @param text: parameters denoted as python list
         @:return true if parsing was successful
         """
-        new_stars = copy(self.parameters["segmentation"]["stars"])
-        new_ranking = copy(self.parameters["segmentation"]["ranking"])
+        return Segmentation.decode_auto_params_into(self.parameters, text)
+
+    @staticmethod
+    def decode_auto_params_into(complete_params, text):
+        """
+        Decode automatic parameters from text and apply to self.
+
+        @param text: parameters denoted as python list
+        @:return true if parsing was successful
+        """
+        new_stars = copy(complete_params["segmentation"]["stars"])
+        new_ranking = copy(complete_params["segmentation"]["ranking"])
         try:
             all_params = ast.literal_eval(text)
             snake_params = all_params[0]
@@ -111,7 +121,7 @@ class Segmentation(object):
             for name in sorted(snake_auto_params.keys()):
                 val = snake_params[0]
                 if name == "sizeWeight":  # value to list
-                    original = self.parameters["segmentation"]["stars"]["sizeWeight"]
+                    original = complete_params["segmentation"]["stars"]["sizeWeight"]
                     val = list(np.array(original) * (val/np.mean(original)))
 
                 new_stars[name] = val
@@ -123,8 +133,8 @@ class Segmentation(object):
         except:
             return False
 
-        self.parameters["segmentation"]["stars"] = new_stars
-        self.parameters["segmentation"]["ranking"] = new_ranking
+        complete_params["segmentation"]["stars"] = new_stars
+        complete_params["segmentation"]["ranking"] = new_ranking
         return True
 
     @staticmethod

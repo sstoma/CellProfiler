@@ -11,6 +11,7 @@ from cellprofiler.preferences import get_max_workers
 import contrib.cell_star.parameter_fitting.pf_process as pf_process
 from contrib.cell_star.parameter_fitting.pf_process import run, test_trained_parameters
 from contrib.cell_star.parameter_fitting.pf_snake import GTSnake
+from contrib.cell_star.process.segmentation import Segmentation
 from contrib.cell_star.utils import image_util, debug_util
 
 logger = logging.getLogger(__name__)
@@ -136,6 +137,7 @@ if __name__ == "__main__":
 
     print "Best_params:", complete_params
     print
+    print "CellProfiler autoparams:", Segmentation.encode_auto_params_from_all_params(complete_params)
 
     debug_util.DEBUGING = True
     if image_result_path is not None:
