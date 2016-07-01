@@ -1121,6 +1121,7 @@ class AutoFitterThread(threading.Thread):
         self._args = list(args)
         self._callback = callback
         self.started = False
+        self.mock_alive = False
         self.exception = None
         super(AutoFitterThread, self).__init__()
         pass
@@ -1140,9 +1141,18 @@ class AutoFitterThread(threading.Thread):
     def start(self):
         #  check if call on the same thread because of explorer
         if not explorer_expected():
+            self.started = True
             super(AutoFitterThread, self).start()
         else:
+            self.mock_alive = True
             self.run()
+            self.mock_alive = False
+
+    def is_alive(self):
+        if not explorer_expected():
+            return super(AutoFitterThread, self).is_alive()
+        else:
+            return self.mock_alive
 
     def kill(self):
         pass

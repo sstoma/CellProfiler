@@ -640,20 +640,23 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
         x.maximal_cell_overlap.value = 0.4
         x.background_brighter_then_cell_inside.value = False
         x.average_cell_diameter.value = 30
+        x.autoadaptation_steps.value = 1
 
         img = np.ones((200, 200)) * 0.5
-        draw_brightfield_cell(img, 100, 100, 20, False)
-        draw_brightfield_cell(img, 120, 120, 20, False)
-        draw_brightfield_cell(img, 110, 70, 20, False)
-        draw_disc(img, (100, 100), 20, .65)
-        draw_disc(img, (120, 120), 20, .65)
-        draw_disc(img, (110, 70), 20, .65)
+        draw_brightfield_cell(img, 100, 100, 15, False)
+        draw_brightfield_cell(img, 120, 120, 15, False)
+        draw_brightfield_cell(img, 110, 70, 15, False)
+        draw_brightfield_cell(img, 160, 160, 10, False)
+        draw_disc(img, (100, 100), 15, .65)
+        draw_disc(img, (120, 120), 15, .65)
+        draw_disc(img, (110, 70), 15, .65)
+        draw_disc(img, (160, 160), 10, .65)
         img = img + np.random.normal(3., 0.01, img.shape)
         img = scipy.ndimage.gaussian_filter(img, 3)
 
         label = np.zeros((200, 200), dtype=int)
-        draw_disc(label, (100, 100), 20, 1)
-        draw_disc(label, (110, 70), 20, 2)
+        draw_disc(label, (100, 100), 15, 1)
+        draw_disc(label, (110, 70), 15, 2)
 
         image = cpi.Image(img, file_name="test_03_01_simple_fitting")
         image_set_list = cpi.ImageSetList()
@@ -675,13 +678,15 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
         object_set = cpo.ObjectSet()
         measurements = cpmeas.Measurements()
         pipeline = cellprofiler.pipeline.Pipeline()
-        x.segmentation_precision.value = 12
+        x.segmentation_precision.value = 11
         x.run(Workspace(pipeline, x, image_set, object_set, measurements, None))
         objects = object_set.get_objects(OBJECTS_NAME)
-        self.assertEqual(3, objects.segmented.max())
-        self.assertEqual(objects.segmented[100, 100], 3)
-        self.assertEqual(objects.segmented[120, 120], 1)
-        self.assertEqual(objects.segmented[110, 70], 2)
+        self.assertEqual(4, objects.segmented.max())
+        colours = sorted([objects.segmented[100, 100], objects.segmented[120, 120], objects.segmented[110, 70], objects.segmented[160, 160]])
+        self.assertEqual(colours[0], 1)
+        self.assertEqual(colours[1], 2)
+        self.assertEqual(colours[2], 3)
+        self.assertEqual(colours[3], 4)
 
     def test_03_02_fitting_background_masked(self):
         # Test if ignore and background can be used in fitting process (without it it should fade)
