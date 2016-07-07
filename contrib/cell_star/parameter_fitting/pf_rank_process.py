@@ -273,7 +273,7 @@ def optimize_brute(params_to_optimize, distance_function):
 def optimize_basinhopping(params_to_optimize, distance_function):
     minimizer_kwargs = {"method": "COBYLA"}
     bounds = RankBounds
-    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds, minimizer_kwargs=minimizer_kwargs, niter=200)
+    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds, minimizer_kwargs=minimizer_kwargs, niter=170)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
 

@@ -237,6 +237,7 @@ class Segmentation(object):
         self.grow_snakes()
         logger.debug("filter_snakes")
         debug_util.draw_snakes(self.images.image, self.snakes + self.new_snakes, it=step)
+        debug_util.save_snake_properties(self.snakes + self.new_snakes, self.parameters, it=step)
         self.filter_snakes()
         logger.debug("done")
 

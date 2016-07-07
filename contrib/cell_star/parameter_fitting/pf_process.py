@@ -316,7 +316,7 @@ def optimize_de(params_to_optimize, distance_function):
 def optimize_basinhopping(params_to_optimize, distance_function, time_percent = 100):
     minimizer_kwargs = {"method": "COBYLA"}
     bounds = ContourBounds
-    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,  minimizer_kwargs=minimizer_kwargs, niter=44*time_percent/100)
+    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,  minimizer_kwargs=minimizer_kwargs, niter=35*time_percent/100)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
 

@@ -37,6 +37,10 @@ if __name__ == "__main__":
         if sys.argv[8] == '-O':
             options = sys.argv[9]
 
+    #from contrib.cell_star.core.snake import Snake
+    #from contrib.cell_star.tests.experiments import smooth_contour_turns
+    #Snake.smooth_contour = smooth_contour_turns
+
     test_pf.corpus_path = sys.argv[1]
     image_path = sys.argv[2]
     mask_path = sys.argv[3]
@@ -44,10 +48,14 @@ if __name__ == "__main__":
     avg_cell_diameter = float(sys.argv[5])
 
     #from contrib.cell_star.utils.params_util import default_parameters
-    #full_params_contour = default_parameters(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
+    #default = default_parameters(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
+
     #complete_params = full_params_contour
     full_params_contour, _, _ = test_pf.test_pf(image_path, mask_path, precision, avg_cell_diameter, sys.argv[6], options=options)
     complete_params, _, _ = test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, sys.argv[6], initial_params=full_params_contour, options=options)
+
+    #complete_params["segmentation"]["ranking"]["stickingWeight"] = 60.0
+
     print "Best_params:", complete_params
     print
     print "CellProfiler autoparams:", Segmentation.encode_auto_params_from_all_params(complete_params)

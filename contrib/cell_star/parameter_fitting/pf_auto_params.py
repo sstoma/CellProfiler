@@ -36,18 +36,29 @@ class OptimisationBounds(object):
     @staticmethod
     def from_ranges(ranges_dict):
         bounds = OptimisationBounds()
-        bounds.xmin, bounds.xmax = zip(*zip(*list(sorted(ranges_dict.iteritems())))[1])
+        bounds.xmin = []
+        bounds.xmax = []
+        for k,v in list(sorted(ranges_dict.iteritems())):
+            if k == "borderThickness":
+                bounds.xmin.append(0.001)
+                bounds.xmax.append(2)
+            elif k == "smoothness":
+                bounds.xmin.append(4.0)
+                bounds.xmax.append(10.0)
+            else:
+                bounds.xmin.append(-1000000)
+                bounds.xmax.append(1000000)
+            #bounds.xmin, bounds.xmax = zip(*zip(*list(sorted(ranges_dict.iteritems())))[1])
         return bounds
 
     def __call__(self, **kwargs):
         x = kwargs["x_new"]
-        return True
-        #tmax = bool(np.all(x <= self.xmax))
-        #tmin = bool(np.all(x >= self.xmin))
-        #return tmax and tmin
+        tmax = bool(np.all(x <= self.xmax))
+        tmin = bool(np.all(x >= self.xmin))
+        return tmax and tmin
 
 ContourBounds = OptimisationBounds.from_ranges(parameters_range)
-RankBounds = OptimisationBounds()
+RankBounds = OptimisationBounds(xmax = 100, xmin = -100)
 
 #
 #
@@ -93,8 +104,7 @@ def pf_parameters_decode(param_vector, org_size_weights_list, step, avg_cell_dia
         if name == "sizeWeight":
             rescaled = list(np.array(org_size_weights_list) * (rescaled/np.mean(org_size_weights_list)))
         elif name == "borderThickness":
-            max_bt = max_size * avg_cell_diameter - 1
-            rescaled = min(max(0.001, val), max_bt)
+            rescaled = min(max(0.001, val), 3)
         parameters[name] = rescaled
     return parameters
 
