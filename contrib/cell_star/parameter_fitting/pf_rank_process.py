@@ -21,7 +21,7 @@ from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.utils.debug_util import explore_cellstar
 from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, general_multiproc_fitting
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
-from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode
+from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode, RankBounds
 from contrib.cell_star.parameter_fitting.pf_mutator import *
 
 import cellprofiler.preferences
@@ -122,7 +122,7 @@ def pf_rank_get_ranking(rank_snakes, initial_parameters):
 #
 #
 
-def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, method='brute', initial_params=None,
+def run_multiprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, method='brute', initial_params=None,
                      background_image=None, ignore_mask=None):
     """
     :param gt_snakes: gt snakes label image
@@ -138,6 +138,7 @@ def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, metho
         params = default_parameters(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
     else:
         params = copy.deepcopy(initial_params)
+        avg_cell_diameter = params["segmentation"]["avgCellDiameter"]
 
     start = time.clock()
     best_params, distance = multiproc_optimize((image, background_image, ignore_mask), gt_snakes, method, params)
@@ -150,7 +151,7 @@ def run_multiprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, metho
     return best_params_full, best_params, distance
 
 
-def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, method='brute', initial_params=None,
+def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, method='brute', initial_params=None,
                       background_image=None, ignore_mask=None):
     """
     :param gt_snakes: gt snakes label image
@@ -167,6 +168,7 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
         params = default_parameters(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
     else:
         params = copy.deepcopy(initial_params)
+        avg_cell_diameter = params["segmentation"]["avgCellDiameter"]
 
     start = time.clock()
 
@@ -180,6 +182,8 @@ def run_singleprocess(image, gt_snakes, precision=-1, avg_cell_diameter=-1, meth
     radius = params["segmentation"]["seeding"]["randomDiskRadius"] * params["segmentation"]["avgCellDiameter"]
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
                            get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=2*radius/3.0)]
+
+
     gt_snake_grown_seed_pairs = \
         [(gt_snake, grow_single_seed(seed, images, params, encoded_star_params)) for gt_snake, seed in
          gt_snake_seed_pairs]
@@ -268,7 +272,8 @@ def optimize_brute(params_to_optimize, distance_function):
 
 def optimize_basinhopping(params_to_optimize, distance_function):
     minimizer_kwargs = {"method": "COBYLA"}
-    result = opt.basinhopping(distance_function, params_to_optimize, minimizer_kwargs=minimizer_kwargs, niter=200)
+    bounds = RankBounds
+    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds, minimizer_kwargs=minimizer_kwargs, niter=200)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
 

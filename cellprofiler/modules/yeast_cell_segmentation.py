@@ -895,6 +895,7 @@ class IdentifyYeastCells(cpmi.Identify):
                                          self.decoded_segmentation_precision_value, self.average_cell_diameter.value,
                                          self.update_partial_iteration_progress))
 
+
                     aft_active.append(
                         AutoFitterThread(run_rank_pf, self.update_rank_params,
                                          input_image, background_image, ignore_mask_image, ground_truth_labels,
@@ -920,7 +921,7 @@ class IdentifyYeastCells(cpmi.Identify):
                 return dialog.Update(steps * 100)[0]
 
             def wait(time):
-                return wx.Sleep(time)
+                return wx.Sleep(int(time+0.5))
 
             self.fit_parameters(input_image, background_image, ignore_mask_image, ground_truth_labels, progress_max, update, wait)
 

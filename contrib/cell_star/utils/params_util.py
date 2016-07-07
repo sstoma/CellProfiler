@@ -12,7 +12,7 @@ def default_parameters(segmentation_precision=-1, avg_cell_diameter=-1, min_size
     if avg_cell_diameter != -1:
         parameters["segmentation"]["avgCellDiameter"] = avg_cell_diameter
 
-    if segmentation_precision == -1:
+    if segmentation_precision is None:
         return parameters
     else:
         return parameters_from_segmentation_precision(parameters, segmentation_precision)

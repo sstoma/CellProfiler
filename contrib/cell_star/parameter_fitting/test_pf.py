@@ -92,6 +92,8 @@ def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial
     gt_mask = image_to_label(gt_image)
 
     gt_snakes = gt_label_to_snakes(gt_mask)
+
+
     return run(frame, gt_snakes, precision, avg_cell_diameter, method, initial_params=initial_params)
 
 

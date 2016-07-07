@@ -18,6 +18,7 @@ import unittest
 import StringIO
 
 import numpy as np
+import time
 import scipy.ndimage
 
 import cellprofiler.cpimage as cpi
@@ -666,7 +667,7 @@ IdentifyYeastCells:[module_num:3|svn_version:\'Unknown\'|variable_revision_numbe
         old_params = ast.literal_eval(x.autoadapted_params.value)
         input_processed, background_processed, ignore_mask_processed = x.preprocess_images(img, None, None)
         x.fit_parameters(input_processed, background_processed, ignore_mask_processed, label,
-                         x.autoadaptation_steps.value * 2, lambda x: True, lambda y: True)
+                         x.autoadaptation_steps.value * 2, lambda x: True, lambda secs: time.sleep(secs))
         new_params = ast.literal_eval(x.autoadapted_params.value)
         self.assertNotEqual(old_params[0], new_params[0])
         self.assertNotEqual(old_params[1], new_params[1])

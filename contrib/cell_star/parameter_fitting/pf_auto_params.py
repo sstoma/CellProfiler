@@ -10,8 +10,8 @@ from numpy import linalg
 #
 #
 
-parameters_range = {"brightnessWeight": (-0.4, 0.4),
-                    "borderThickness": (0.001, 1.0),
+parameters_range = {"borderThickness": (0.001, 1.0),
+                    "brightnessWeight": (-0.4, 0.4),
                     "cumBrightnessWeight": (0, 500),
                     "gradientWeight": (-30, 30),
                     "sizeWeight": (10, 300),
@@ -19,13 +19,35 @@ parameters_range = {"brightnessWeight": (-0.4, 0.4),
 }
 
 rank_parameters_range = {"avgBorderBrightnessWeight": (0, 600),
-                         "avgInnerBrightnessWeight": (-50, 50),
-                         "avgInnerDarknessWeight": (-50, 50),
-                         "logAreaBonus": (5, 40),
+                         "avgInnerBrightnessWeight": (-100, 100),
+                         "avgInnerDarknessWeight": (-100, 100),
+                         "logAreaBonus": (5, 50),
                          "maxInnerBrightnessWeight": (-10, 50),
                          # "maxRank": (5, 300),
                          # "stickingWeight": (0, 120)  # cannot calculate entropy for mutants -- this was 60 so may be important
 }
+
+
+class OptimisationBounds(object):
+    def __init__(self, xmax=1, xmin=0):
+        self.xmax = xmax
+        self.xmin = xmin
+
+    @staticmethod
+    def from_ranges(ranges_dict):
+        bounds = OptimisationBounds()
+        bounds.xmin, bounds.xmax = zip(*zip(*list(sorted(ranges_dict.iteritems())))[1])
+        return bounds
+
+    def __call__(self, **kwargs):
+        x = kwargs["x_new"]
+        return True
+        #tmax = bool(np.all(x <= self.xmax))
+        #tmin = bool(np.all(x >= self.xmin))
+        #return tmax and tmin
+
+ContourBounds = OptimisationBounds.from_ranges(parameters_range)
+RankBounds = OptimisationBounds()
 
 #
 #
@@ -55,8 +77,6 @@ def pf_parameters_encode(parameters):
         point.append(val)
     # should be scaled to go from 0-1
     return point
-
-#def pf_limit_basin(param_vector, avg_cell_diameter):
 
 
 def pf_parameters_decode(param_vector, org_size_weights_list, step, avg_cell_diameter, max_size):
@@ -117,7 +137,7 @@ def pf_rank_parameters_encode(parameters, complete_params=True):
     return point
 
 
-def pf_rank_parameters_decode(param_vector, scaling=False):
+def pf_rank_parameters_decode(param_vector, final=False):
     """
     @type param_vector: numpy.ndarray
     @return: only ranking parameters as a dict
@@ -129,9 +149,10 @@ def pf_rank_parameters_decode(param_vector, scaling=False):
         parameters[name] = rescaled
     parameters["stickingWeight"] = 0
 
-    if scaling:
+    if final:
         normalizer = linalg.norm(parameters.values())
         for a in parameters.keys():
             parameters[a] /= normalizer
+        parameters["stickingWeight"] = 60 # / 300.8720658352982  # default normalization
 
     return parameters

@@ -23,7 +23,7 @@ from contrib.cell_star.parameter_fitting.pf_snake import PFSnake, GTSnake
 from contrib.cell_star.core.seeder import Seeder
 from contrib.cell_star.process.segmentation import Segmentation
 from contrib.cell_star.utils.debug_util import image_show, image_save, explore_cellstar
-from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode, parameters_range
+from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode, parameters_range, ContourBounds
 
 import cellprofiler.preferences
 get_max_workers = cellprofiler.preferences.get_max_workers
@@ -315,7 +315,8 @@ def optimize_de(params_to_optimize, distance_function):
 
 def optimize_basinhopping(params_to_optimize, distance_function, time_percent = 100):
     minimizer_kwargs = {"method": "COBYLA"}
-    result = opt.basinhopping(distance_function, params_to_optimize, minimizer_kwargs=minimizer_kwargs, niter=44*time_percent/100)
+    bounds = ContourBounds
+    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,  minimizer_kwargs=minimizer_kwargs, niter=44*time_percent/100)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
 
