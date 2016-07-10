@@ -22,6 +22,8 @@ PROFILE_MEMORY = False
 # main switch which turn off all debugging utils (always deploy with False)
 DEBUGING = False
 SHOW = False
+
+SNAKE_PROPERTIES = False
 # allow the user to inspect cell star results before segmentation (only for debugging)
 EXPLORE = False
 
@@ -212,6 +214,12 @@ def draw_snakes(image, snakes, outliers=.1, it=0):
         fig.clf()
         plt.close(fig)
 
+def save_snake_properties(snakes, params, it=0):
+    if DEBUGING and SNAKE_PROPERTIES and len(snakes) > 1:
+        prepare_debug_folder()
+
+        file_path = os.path.join(debug_image_path, "snakes_rainbow_" + str(it) + ".csv")
+        # TODO
 
 try:
     import line_profiler

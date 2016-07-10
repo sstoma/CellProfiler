@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
+from contrib.cell_star.core.snake_filter import SnakeFilter
 from contrib.cell_star.utils.debug_util import explore_cellstar
 from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, general_multiproc_fitting
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
@@ -63,7 +64,7 @@ def distance_smooth_norm(expected, result):
     """
     global best_so_far, calculations
     n = result.size
-    differences = abs(expected - result) ** 3 * np.arange(n*3, 0, -3)
+    differences = abs(expected - result) ** 4 * np.arange(n*2, 0, -2)
     distance = norm(differences) / np.sqrt(n)
 
     best_so_far = min(best_so_far, distance)
@@ -116,6 +117,15 @@ def pf_rank_get_ranking(rank_snakes, initial_parameters):
 
     return fitness
 
+
+def filter_snakes_as_singles(parameters, images, snakes):
+    """
+    @type snakes: list[(GTSnake, PFRankSnake)]
+    """
+    filterer = SnakeFilter(parameters, images)
+    proper_snakes = [(gt,snake) for gt,snake in snakes if not filterer.is_single_snake_discarded(snake.grown_snake)]
+    logger.debug("Filtering left %d out of %d rank snakes" % (len(snakes) - len(proper_snakes), len(snakes)))
+    return proper_snakes
 #
 #
 # OPTIMIZATION
@@ -180,9 +190,12 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
     # prepare seed and grow snakes
     encoded_star_params = pf_parameters_encode(params)
     radius = params["segmentation"]["seeding"]["randomDiskRadius"] * params["segmentation"]["avgCellDiameter"]
+    radius_big = params["segmentation"]["avgCellDiameter"] * 1.5
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=2*radius/3.0)]
-
+                           get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=2*radius/3.0)
+                           + get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=4*radius/5.0)
+                           + get_gt_snake_seeds(gt_snake, radius=radius_big, times=8, min_radius=3*radius_big/4.0)
+                            ]
 
     gt_snake_grown_seed_pairs = \
         [(gt_snake, grow_single_seed(seed, images, params, encoded_star_params)) for gt_snake, seed in
@@ -192,7 +205,11 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
                                            [PFRankSnake.create_all(gt, grown, params) for (gt, grown) in
                                             gt_snake_grown_seed_pairs])
 
-    gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all, avg_cell_diameter)
+    #gt_snake_grown_seed_pairs_filtered = filter_snakes_as_singles(params, images, gt_snake_grown_seed_pairs_all)
+    gt_snake_grown_seed_pairs_filtered = gt_snake_grown_seed_pairs_all
+
+    #gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all, avg_cell_diameter)
+    gts_snakes_with_mutations = gt_snake_grown_seed_pairs_filtered
     ranked_snakes = zip(*gts_snakes_with_mutations)[1]
 
     explore_cellstar(image=images.image, images=images, params=params,
@@ -271,8 +288,9 @@ def optimize_brute(params_to_optimize, distance_function):
 
 
 def optimize_basinhopping(params_to_optimize, distance_function):
-    minimizer_kwargs = {"method": "COBYLA"}
     bounds = RankBounds
+    #minimizer_kwargs = {"method": "COBYLA", bounds=bounds}
+    minimizer_kwargs = {"method": "L-BFGS-B", "bounds" : zip(bounds.xmin,bounds.xmax)}
     result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds, minimizer_kwargs=minimizer_kwargs, niter=170)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun

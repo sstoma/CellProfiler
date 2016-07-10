@@ -108,7 +108,7 @@ def get_gt_snake_seeds(gt_snake, times=3, radius=5, min_radius=0):
         inside_seeds = [s for s in random_seeds if gt_snake.is_inside(s.x, s.y)]
         seeds += inside_seeds
         left = times - (len(seeds) - 1)
-        min_radius /= 1.2 # make sure that it finish
+        min_radius /= 1.1 # make sure that it finish
 
     return seeds
 
@@ -123,6 +123,8 @@ def get_size_weight_list(params):
 def prepare_snake_seed_pairs(gt_snakes, initial_parameters):
     radius = initial_parameters["segmentation"]["seeding"]["randomDiskRadius"] * initial_parameters["segmentation"][
         "avgCellDiameter"]
+    for gt_snake in gt_snakes:
+        gt_snake.set_erosion(4)
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
                            get_gt_snake_seeds(gt_snake, times=3, radius=radius, min_radius=2*radius/3.0)]
     random.shuffle(gt_snake_seed_pairs)
@@ -141,6 +143,8 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=keep_3_best
 
     def create_distance_function(pairs_to_use):
         def distance(partial_parameters, debug=False):
+            #random.shuffle(pairs_to_use)
+            #randoms_pair = pairs_to_use[:pick_seed_pairs]
             current_distance = distance_norm(
                 snakes_fitness(pairs_to_use, images, initial_parameters, partial_parameters, debug=debug)
             )
@@ -211,11 +215,11 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
     best_score = optimized[1]
 
     stop = time.clock()
-    smoothness = best_params["smoothness"]
-    smoothness_bounded = max(parameters_range["smoothness"][0], min(smoothness, parameters_range["smoothness"][1]))
-    if smoothness_bounded != smoothness:
-        logger.info("Bounding smoothness: %f -> %f" % (smoothness,smoothness_bounded))
-        best_params["smoothness"] = float(smoothness_bounded)
+    #smoothness = best_params["smoothness"]
+    #smoothness_bounded = max(parameters_range["smoothness"][0], min(smoothness, parameters_range["smoothness"][1]))
+    #if smoothness_bounded != smoothness:
+    #    logger.info("Bounding smoothness: %f -> %f" % (smoothness,smoothness_bounded))
+    #    best_params["smoothness"] = float(smoothness_bounded)
 
     logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params.iteritems())]))
     logger.debug("Time: %d" % (stop - start))
@@ -282,7 +286,7 @@ def optimize_brute(params_to_optimize, distance_function):
     #upper_bound[params_to_optimize == 0] = 100 * search_range
 
     # introduce random shift (0,grid step) # max 20%
-    number_of_steps = 3
+    number_of_steps = 5
     step = (upper_bound - lower_bound) / float(number_of_steps)
     random_shift = np.array([random.random() * 2 / 10 for _ in range(len(lower_bound))])
     lower_bound += random_shift * step
@@ -315,7 +319,9 @@ def optimize_de(params_to_optimize, distance_function):
 
 def optimize_basinhopping(params_to_optimize, distance_function, time_percent = 100):
     minimizer_kwargs = {"method": "COBYLA"}
-    bounds = ContourBounds
+    #bounds = ContourBounds
+    #minimizer_kwargs = {"method": "L-BFGS-B", "bounds" : zip(bounds.xmin,bounds.xmax)}
+    bounds = None
     result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,  minimizer_kwargs=minimizer_kwargs, niter=35*time_percent/100)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun

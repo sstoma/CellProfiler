@@ -92,9 +92,20 @@ class PFSnake(object):
         return np.count_nonzero(intersection_local)
 
     @staticmethod
+    def out_of_gt_penalty(snake_area, gt_snake_area, intersection):
+        snake_less_gt = snake_area - intersection
+        snake_less_gt_percent = snake_less_gt / gt_snake_area * 100
+        if snake_less_gt_percent < 20:
+            return 1
+        elif snake_less_gt_percent < 80:
+            return 1.3
+        else:
+            return 2
+
+    @staticmethod
     def fitness_with_gt(snake, gt_snake):
         intersection = PFSnake.gt_snake_intersection(snake, gt_snake)
-        return intersection / (snake.area + gt_snake.area - intersection)
+        return intersection / (gt_snake.area + (snake.area - intersection) * PFSnake.out_of_gt_penalty(snake.area, gt_snake.area, intersection))
 
     def multi_fitness(self, gt_snake):
         return max([PFSnake.fitness_with_gt(pf_snake, gt_snake) for pf_snake in self.snakes])
@@ -116,9 +127,14 @@ class GTSnake(object):
     def _calculate_centroids(self, binary_mask):
         self.centroid_y, self.centroid_x = measure.center_of_mass(binary_mask, binary_mask, [1])[0]
 
+    def set_erosion(self, size):
+        self.eroded_mask = morph.binary_erosion(self.binary_mask, np.ones((size, size)))
+
     def is_inside(self, x, y):
         """
         Check if seed is inside of eroded mask.
         @type seed: Seed
         """
+        if x < 0 or x >= self.eroded_mask.shape[1] or y < 0 or y >= self.eroded_mask.shape[0]:
+            return False
         return self.eroded_mask[y, x]

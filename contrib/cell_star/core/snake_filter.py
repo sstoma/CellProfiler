@@ -27,6 +27,31 @@ class SnakeFilter(object):
         self.parameters = parameters
         self.images = images
 
+    def is_single_snake_discarded(self, snake):
+        """
+        @type snake: Snake
+        @rtype: bool
+        """
+        if snake.rank >= Snake.max_rank:
+            return True
+
+        if snake.avg_inner_darkness < self.parameters["segmentation"]["minAvgInnerDarkness"]:
+            return True
+
+        max_area = self.parameters["segmentation"]["maxArea"] * self.parameters["segmentation"]["avgCellDiameter"]**2 * math.pi / 4
+        if snake.area > max_area:
+            return True
+
+        min_area = self.parameters["segmentation"]["minArea"] * self.parameters["segmentation"]["avgCellDiameter"]**2 * math.pi / 4
+        if snake.area < min_area:
+            return True
+
+        max_free_border = self.parameters["segmentation"]["stars"]["points"] * self.parameters["segmentation"]["maxFreeBorder"]
+        if snake.max_contiguous_free_border > max_free_border:
+            return True
+
+        return False
+
     def filter(self, snakes):
         """
         @type snakes: list[Snake]

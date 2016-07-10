@@ -314,4 +314,6 @@ def load_image(filename, scaling=True):
     else:
         image2d = image.astype(float)
 
+    if image2d.ndim == 3:
+        image2d = np.sum(image, 2) / image.shape[2]
     return image2d

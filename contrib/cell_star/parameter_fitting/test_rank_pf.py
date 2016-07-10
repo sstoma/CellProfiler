@@ -66,6 +66,10 @@ if __name__ == "__main__":
         print "Given: " + " ".join(sys.argv)
         sys.exit(-1)
 
+    #from contrib.cell_star.core.snake import Snake
+    #from contrib.cell_star.tests.experiments import smooth_contour_turns
+    #Snake.smooth_contour = smooth_contour_turns
+
     pf_rank.get_max_workers = lambda: 2
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)

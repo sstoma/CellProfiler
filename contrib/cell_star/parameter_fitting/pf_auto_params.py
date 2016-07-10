@@ -10,12 +10,12 @@ from numpy import linalg
 #
 #
 
-parameters_range = {"borderThickness": (0.001, 1.0),
+parameters_range = {#"borderThickness": (0.001, 1.0),
                     "brightnessWeight": (-0.4, 0.4),
                     "cumBrightnessWeight": (0, 500),
                     "gradientWeight": (-30, 30),
                     "sizeWeight": (10, 300),
-                    "smoothness": (4, 10)
+                    #"smoothness": (3, 8)
 }
 
 rank_parameters_range = {"avgBorderBrightnessWeight": (0, 600),
@@ -29,9 +29,12 @@ rank_parameters_range = {"avgBorderBrightnessWeight": (0, 600),
 
 
 class OptimisationBounds(object):
-    def __init__(self, xmax=1, xmin=0):
+    def __init__(self, size = None, xmax=1, xmin=0):
         self.xmax = xmax
         self.xmin = xmin
+        if size is not None:
+            self.xmax = [xmax] * size
+            self.xmin = [xmin] * size
 
     @staticmethod
     def from_ranges(ranges_dict):
@@ -48,7 +51,8 @@ class OptimisationBounds(object):
             else:
                 bounds.xmin.append(-1000000)
                 bounds.xmax.append(1000000)
-            #bounds.xmin, bounds.xmax = zip(*zip(*list(sorted(ranges_dict.iteritems())))[1])
+
+        #bounds.xmin, bounds.xmax = zip(*zip(*list(sorted(ranges_dict.iteritems())))[1])
         return bounds
 
     def __call__(self, **kwargs):
@@ -58,7 +62,7 @@ class OptimisationBounds(object):
         return tmax and tmin
 
 ContourBounds = OptimisationBounds.from_ranges(parameters_range)
-RankBounds = OptimisationBounds(xmax = 100, xmin = -100)
+RankBounds = OptimisationBounds(size=len(rank_parameters_range))
 
 #
 #
@@ -106,6 +110,10 @@ def pf_parameters_decode(param_vector, org_size_weights_list, step, avg_cell_dia
         elif name == "borderThickness":
             rescaled = min(max(0.001, val), 3)
         parameters[name] = rescaled
+
+    # set from default
+    parameters["borderThickness"] = 0.1
+    parameters["smoothness"] = 6
     return parameters
 
 
@@ -157,12 +165,15 @@ def pf_rank_parameters_decode(param_vector, final=False):
         #val = min(1, max(0, val))
         rescaled = vmin + val * (vmax - vmin)
         parameters[name] = rescaled
-    parameters["stickingWeight"] = 0
 
-    if final:
-        normalizer = linalg.norm(parameters.values())
-        for a in parameters.keys():
-            parameters[a] /= normalizer
-        parameters["stickingWeight"] = 60 # / 300.8720658352982  # default normalization
+    #set from default
+    parameters["stickingWeight"] = 60
+
+    #if final:
+        #parameters["stickingWeight"] = 60
+    #    normalizer = linalg.norm(parameters.values())
+    #    for a in parameters.keys():
+    #        parameters[a] /= normalizer
+
 
     return parameters
