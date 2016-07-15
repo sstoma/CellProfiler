@@ -107,7 +107,6 @@ class Snake(object):
         smoothness = self.parameters["segmentation"]["stars"]["smoothness"]
         gradient_weight = self.parameters["segmentation"]["stars"]["gradientWeight"]
         brightness_weight = self.parameters["segmentation"]["stars"]["brightnessWeight"]
-        content_weight = self.parameters["segmentation"]["stars"]["contentWeight"] / avg_cell_diameter
         size_weight = float(size_weight) / avg_cell_diameter
         cum_brightness_weight = self.parameters["segmentation"]["stars"]["cumBrightnessWeight"] / avg_cell_diameter
         background_weight = self.parameters["segmentation"]["stars"]["backgroundWeight"] / avg_cell_diameter
@@ -116,7 +115,6 @@ class Snake(object):
 
         im = self.images.image_back_difference_blurred
         imb = self.images.brighter
-        imc = self.images.darker
         imfg = self.images.foreground_mask
 
         steps = polar_transform.steps
@@ -151,7 +149,6 @@ class Snake(object):
 
         numpy_index = Index.to_numpy(index)
         pre_f = (cum_brightness_weight * imb[numpy_index] \
-                 - content_weight * imc[numpy_index] \
                  + background_weight * (1 - imfg[numpy_index])) * step
         f = np.cumsum(pre_f, axis=0)
 

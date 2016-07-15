@@ -54,7 +54,6 @@ def default_config():
                 'unstick': 0.3,
                 'backgroundWeight': 0.0,
                 'smoothness': 7.0,
-                'contentWeight': 0.0,
                 'gradientBlur': 0.0
             },
             'minAvgInnerDarkness': 0.1,
