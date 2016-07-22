@@ -12,8 +12,46 @@ from numpy import argwhere
 from scipy.ndimage.filters import *
 
 
-def convolve2d(img, kernel, mode='same'):
-    return convolve(img, kernel)
+def fast_power(a, n):
+    mn = a
+    res = 1
+    n = int(n)
+    while n > 0:
+        if(n%2 == 1):
+            res *= mn
+        mn = mn * mn
+        n /= 2
+    return res
+
+
+def fft_convolve(in1, in2, times):
+    def _centered(arr, newsize):
+        # Return the center newsize portion of the array.
+        currsize = np.array(arr.shape)
+        startind = (currsize - newsize) // 2
+        endind = startind + newsize
+        myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+        return arr[tuple(myslice)]
+
+    if times == 0:
+        return in1.copy()
+
+    from scipy.signal.signaltools import _next_regular
+    from numpy.fft import rfft2, irfft2
+    s1 = np.array(in1.shape)
+    s2 = np.array(in2.shape)
+    shape = s1 + (s2 - 1) * times
+
+    # Speed up FFT by padding to optimal size for FFTPACK
+    fshape = [_next_regular(int(d)) for d in shape]
+    fslice = tuple([slice(0, int(sz)) for sz in shape])
+
+    resfft = fast_power(rfft2(in2, fshape), times)
+    resfft = resfft * rfft2(in1, fshape)
+    ret = irfft2(resfft, fshape)[fslice].copy()
+    ret = ret.real
+
+    return _centered(ret, s1)
 
 
 def extend_slices(my_slices, extension):
@@ -217,15 +255,17 @@ def image_blur(image, times):
     @param times: specifies how many times blurring will be performed
     """
     kernel = np.array([[2, 3, 2], [3, 12, 3], [2, 3, 2]]) / 32.0
-    blurred = convolve2d(image, kernel, 'same')
 
-    for _ in xrange(int(times) - 1):
-        blurred = convolve2d(blurred, kernel, 'same')
+    if times >= 8:
+        return fft_convolve(image, kernel, times)
+    else:
+        blurred = convolve(image, kernel)
+        for _ in xrange(int(times) - 1):
+            blurred = convolve(blurred, kernel)
+        return blurred
 
-    return blurred
 
-
-def image_smooth(image, radius):
+def image_smooth(image, radius, fft_use = True):
     """
     Performs image blur with circular kernel.
     @param image: image to be blurred (assumed as numpy.array of values from 0 to 1)
@@ -237,7 +277,14 @@ def image_smooth(image, radius):
     kernel = get_circle_kernel(radius).astype(float)
     kernel /= np.sum(kernel)
     image = np.array(image, dtype=float)
-    return convolve2d(image, kernel, 'same')
+
+    if radius >= 8 and fft_use:
+        image_2 = np.pad(image, int(radius), mode='reflect')
+        res = fft_convolve(image_2, kernel, 1)
+        return res[radius:-radius, radius:-radius]
+    else:
+        return convolve(image, kernel, mode='reflect', cval=0.0)
+
 
 
 def image_normalize(image):

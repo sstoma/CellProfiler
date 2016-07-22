@@ -424,7 +424,7 @@ class IdentifyYeastCells(cpmi.Identify):
             <i>(Used only when you want to specify advanced parameters)</i><br>
             Use this option to display autoadapted parameters."""%globals())
 
-        self.autoadapted_params = cps.Text(text="Autoadapted parameters: ", value="[[0.1, 0.0442, 304.45, 15.482, 189.40820000000002, 7.0], [300, 10, 0, 18, 10]]", doc="""
+        self.autoadapted_params = cps.Text(text="Autoadapted parameters: ", value="[[0.0442, 304.45, 15.482, 189.40820000000002], [300, 10, 0, 18, 10]]", doc="""
             <i>(Used only when you want to specify advanced and autoadapted parameters)</i><br>
             Autoadapted parameters are pasted here from the "learning" preocedure. These parameters are used to characterize cell borders. 
             Edit them only if you know what you are doing. If you found good parameters for your datasets
