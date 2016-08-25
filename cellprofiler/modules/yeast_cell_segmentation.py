@@ -205,6 +205,36 @@ FTR_OBJECT_QUALITY = "Quality"
 '''The object quality - floating number lower the higher the better'''
 M_OBJECT_FEATURES_OBJECT_QUALITY= '%s_%s' % (C_OBJECT_FEATURES, FTR_OBJECT_QUALITY)
 
+def hack_add_from_file_into_EditObjects(dialog_box):
+    import wx
+    def on_load(event):
+        with wx.FileDialog(None,
+           message="Select image with labels",
+           wildcard="Image file (*.tif,*.tiff,*.jpg,*.jpeg,*.png,*.gif,*.bmp)|*.tif;*.tiff;*.jpg;*.jpeg;*.png;*.gif;*.bmp|*.* (all files)|*.*",
+           style=wx.FD_OPEN) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            path = dlg.Path
+
+        import bioformats
+        labels_loaded = (bioformats.load_image(path) * 255).astype(int)
+        if labels_loaded.ndim == 3:
+            labels_loaded = np.sum(labels_loaded, 2) / labels_loaded.shape[2]
+
+        for l in np.unique(labels_loaded):
+            if l != 0:
+                dialog_box.add_label(l == labels_loaded)
+        # TODO no shape check, no float check
+        dialog_box.init_labels()
+        dialog_box.display()
+        dialog_box.record_undo()
+
+    ID_ACTION_LOAD_FROM_FILE = wx.NewId()
+    sizer = dialog_box.toolbar.ContainingSizer
+    load_file_button = wx.Button(dialog_box, ID_ACTION_LOAD_FROM_FILE, "Add from file")
+    list(sizer.Children)[-1].Sizer.Add(load_file_button,0, wx.ALIGN_CENTER)
+    dialog_box.Bind(wx.EVT_BUTTON, on_load, load_file_button)
+
 ###################################
 #
 # The module class
@@ -1064,6 +1094,7 @@ class IdentifyYeastCells(cpmi.Identify):
             edit_labels[0][-2, -2] = 1
             with EditObjectsDialog(
                     input_image, edit_labels, False, title) as dialog_box:
+                hack_add_from_file_into_EditObjects(dialog_box)
                 result = dialog_box.ShowModal()
                 if result != OK:
                     return None

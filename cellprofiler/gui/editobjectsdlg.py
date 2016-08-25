@@ -112,6 +112,7 @@ class EditObjectsDialog(wx.Dialog):
     ID_ACTION_JOIN = wx.NewId()
     ID_ACTION_CONVEX_HULL = wx.NewId()
     ID_ACTION_DELETE = wx.NewId()
+    ID_ACTION_LOAD_FROM_FILE = wx.NewId()
     
     def __init__(self, guide_image, orig_labels, allow_overlap, title=None):
         '''Initializer
@@ -429,7 +430,7 @@ class EditObjectsDialog(wx.Dialog):
         # Buttons for keep / remove / toggle
         #
         #########################################
-        
+
         keep_button = wx.Button(self, self.ID_ACTION_KEEP, "Keep all")
         sub_sizer.Add(keep_button, 0, wx.ALIGN_CENTER)
 
@@ -447,6 +448,10 @@ class EditObjectsDialog(wx.Dialog):
         reset_button.SetToolTipString(
             "Undo all editing and restore the original objects")
         sub_sizer.Add(reset_button)
+
+        load_file_button = wx.Button(self, self.ID_ACTION_LOAD_FROM_FILE, "Add from file")
+        sub_sizer.Add(load_file_button,0, wx.ALIGN_CENTER)
+
         self.display_image_button = \
             wx.Button(self, self.ID_DISPLAY_IMAGE, label = self.D_HIDE_IMAGE)
         if self.guide_image is None:
@@ -458,6 +463,7 @@ class EditObjectsDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.on_toggle, toggle_button)
         self.Bind(wx.EVT_MENU, self.on_toggle, id= self.ID_ACTION_TOGGLE)
         self.Bind(wx.EVT_BUTTON, self.on_keep, keep_button)
+        self.Bind(wx.EVT_BUTTON, self.on_load, load_file_button)
         self.Bind(wx.EVT_MENU, self.on_keep, id=self.ID_ACTION_KEEP)
         self.Bind(wx.EVT_BUTTON, self.on_remove, remove_button)
         self.Bind(wx.EVT_MENU, self.on_remove, id=self.ID_ACTION_REMOVE)
@@ -1896,6 +1902,28 @@ class EditObjectsDialog(wx.Dialog):
     def on_keep(self, event):
         self.to_keep[1:] = True
         self.display()
+
+    def on_load(self, event):
+        with wx.FileDialog(None,
+           message="Select image with labels",
+           wildcard="Image file (*.tif,*.tiff,*.jpg,*.jpeg,*.png,*.gif,*.bmp)|*.tif;*.tiff;*.jpg;*.jpeg;*.png;*.gif;*.bmp|*.* (all files)|*.*",
+           style=wx.FD_OPEN) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            path = dlg.Path
+
+        import bioformats
+        labels_loaded = (bioformats.load_image(path) * 255).astype(int)
+        if labels_loaded.ndim == 3:
+            labels_loaded = np.sum(labels_loaded, 2) / labels_loaded.shape[2]
+
+        for l in np.unique(labels_loaded):
+            if l != 0:
+                self.add_label(l == labels_loaded)
+        # TODO no shape check, no float check
+        self.init_labels()
+        self.display()
+        self.record_undo()
     
     def on_remove(self, event):
         self.to_keep[1:] = False
