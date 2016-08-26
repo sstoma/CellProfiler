@@ -15,10 +15,10 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
 import contrib.cell_star.utils.debug_util as debug_util
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.parameter_fitting.pf_snake import *
-from contrib.cell_star.process.segmentation import Segmentation
+from contrib.cell_star.segmentation import Segmentation
+from contrib.cell_star.tests.experiments import *
 from contrib.cell_star.utils.debug_util import draw_snakes_on_axes, draw_seeds_on_axes
 from contrib.cell_star.utils.image_util import load_image
-from contrib.cell_star.tests.experiments import *
 
 # input_path = r"D:\Fafa\Drozdze\CellStarTesting\Data\Benchmark2\TestSet10_1k\frames\Point0000_Seq00000022.tif"
 

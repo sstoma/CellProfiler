@@ -3,12 +3,12 @@ __author__ = 'Adam Kaczmarek, Filip Mroz'
 import logging
 import sys
 
-import contrib.cell_star.parameter_fitting.test_pf as test_pf
 import contrib.cell_star.parameter_fitting.pf_process as pf_process
+import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank
+import contrib.cell_star.parameter_fitting.test_pf as test_pf
 import contrib.cell_star.utils.debug_util as debug_util
 from contrib.cell_star.parameter_fitting.test_rank_pf import test_rank_pf
-import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank
-from contrib.cell_star.process.segmentation import Segmentation
+from contrib.cell_star.segmentation import Segmentation
 
 logger = logging.getLogger(__name__)
 

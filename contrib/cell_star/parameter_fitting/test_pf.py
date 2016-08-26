@@ -7,11 +7,11 @@ import sys
 import numpy as np
 import scipy as sp
 
-from cellprofiler.preferences import get_max_workers
 import contrib.cell_star.parameter_fitting.pf_process as pf_process
+from cellprofiler.preferences import get_max_workers
 from contrib.cell_star.parameter_fitting.pf_process import run, test_trained_parameters
 from contrib.cell_star.parameter_fitting.pf_snake import GTSnake
-from contrib.cell_star.process.segmentation import Segmentation
+from contrib.cell_star.segmentation import Segmentation
 from contrib.cell_star.utils import image_util, debug_util
 
 logger = logging.getLogger(__name__)

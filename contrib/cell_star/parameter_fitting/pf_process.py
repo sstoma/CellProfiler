@@ -21,9 +21,9 @@ from contrib.cell_star.core.seed import Seed
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.parameter_fitting.pf_snake import PFSnake, GTSnake
 from contrib.cell_star.core.seeder import Seeder
-from contrib.cell_star.process.segmentation import Segmentation
+from contrib.cell_star.segmentation import Segmentation
 from contrib.cell_star.utils.debug_util import image_show, image_save, explore_cellstar
-from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode, parameters_range, ContourBounds
+from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode
 
 import cellprofiler.preferences
 get_max_workers = cellprofiler.preferences.get_max_workers

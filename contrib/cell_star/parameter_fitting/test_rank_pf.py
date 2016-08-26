@@ -5,13 +5,12 @@ import sys
 
 import numpy as np
 
-import contrib.cell_star.utils.debug_util as debug_util
 import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank
 import contrib.cell_star.parameter_fitting.test_pf as test_pf
+import contrib.cell_star.utils.debug_util as debug_util
 from cellprofiler.preferences import get_max_workers
 from contrib.cell_star.parameter_fitting.test_pf import try_load_image, image_to_label, gt_label_to_snakes
-from contrib.cell_star.process.segmentation import Segmentation
-from contrib.cell_star.utils.params_util import default_parameters
+from contrib.cell_star.segmentation import Segmentation
 
 
 def run_rank_pf(input_image, background_image, ignore_mask_image, gt_mask, parameters, callback_progress = None):
