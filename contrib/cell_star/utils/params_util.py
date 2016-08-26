@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+Params util module contains methods for manipulating parameters and precision to parameters mapping
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
-# External imports
-import numpy as np
-from contrib.cell_star.config.config import default_config
 import sys
 
+import numpy as np
 
-def default_parameters(segmentation_precision=-1, avg_cell_diameter=-1, min_size=0, max_size=sys.maxint):
+from contrib.cell_star.config.config import default_config
+
+
+def default_parameters(segmentation_precision=-1, avg_cell_diameter=-1):
     parameters = default_config()
     if avg_cell_diameter != -1:
         parameters["segmentation"]["avgCellDiameter"] = avg_cell_diameter
@@ -36,19 +41,8 @@ def create_size_weights(size_weight_average, length):
 
     return size_weight_average * size_weight_multiplier / np.average(size_weight_multiplier)
 
-def parameters_from_segmentation_precision(parameters, segmentation_precision):
-    if "use_exact" in parameters:
-        # make parameters that are int ints
-        parameters["segmentation"]["seeding"]["from"]["cellContentRemovingCurrSegmentsRandom"] = int(parameters["segmentation"]["seeding"]["from"]["cellContentRemovingCurrSegmentsRandom"])
-        parameters["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"] = int(parameters["segmentation"]["seeding"]["from"]["snakesCentroidsRandom"])
-        parameters["segmentation"]["seeding"]["from"]["cellBorderRemovingCurrSegmentsRandom"] = int(parameters["segmentation"]["seeding"]["from"]["cellBorderRemovingCurrSegmentsRandom"])
-        parameters["segmentation"]["seeding"]["from"]["cellBorderRandom"] = int(parameters["segmentation"]["seeding"]["from"]["cellBorderRandom"])
-        parameters["segmentation"]["seeding"]["from"]["cellContentRandom"] = int(parameters["segmentation"]["seeding"]["from"]["cellContentRandom"])
-        parameters["segmentation"]["background"]["blurSteps"] = int(parameters["segmentation"]["background"]["blurSteps"])
-        parameters["segmentation"]["steps"] = int(parameters["segmentation"]["steps"])
-        parameters["segmentation"]["stars"]["points"] = int(parameters["segmentation"]["stars"]["points"])
-        return parameters
 
+def parameters_from_segmentation_precision(parameters, segmentation_precision):
     sfrom = lambda x: max(0, segmentation_precision - x)
     segmentation_precision = min(20, segmentation_precision)
     if segmentation_precision <= 0:

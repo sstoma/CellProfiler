@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+Segmentation is a main entry point for CellStar segmentation.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
 # External imports
 import logging
@@ -72,12 +76,6 @@ class Segmentation(object):
         # One background per whole segmentation
         if prev_background is not None:
             self.images.background = prev_background
-        # Update image dimensions parameter
-        try:
-            self.parameters["segmentation"]["transform"]["originalImDim"] = frame.shape
-        except KeyError:
-            self.parameters["segmentation"]["transform"] = {}
-            self.parameters["segmentation"]["transform"]["originalImDim"] = frame.shape
 
     def set_background(self, background):
         self.images._background = background

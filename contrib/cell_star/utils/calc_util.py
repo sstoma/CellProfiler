@@ -5,7 +5,6 @@ Date: 2013-2016
 Website: http://cellstar-algorithm.org/
 """
 
-# External imports
 import math
 
 import numpy as np
@@ -16,6 +15,7 @@ from index import Index
 
 def euclidean_norm((x1, y1), (x2, y2)):
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
 
 def interpolate_radiuses(values_mask, length, values):
     """
@@ -44,7 +44,7 @@ def interpolate_radiuses(values_mask, length, values):
                                 (values[right_interval_boundary] - values[left_interval_boundary]) *
                                 k / (interval_length + 1.0))  # (interval_length + 1.0)
 
-                values[interpolated] = new_val #min(values[interpolated], new_val)
+                values[interpolated] = new_val  # min(values[interpolated], new_val)
 
 
 def loop_connected_components(mask):
@@ -99,61 +99,52 @@ def get_gradient(im, index, border_thickness_steps):
     """
     Fun. calc. radial gradient including thickness of cell edges
     @param im: image (for which grad. will be calc.)
-    @param index: indices of pixes sorted by polar coords. (alpha, radius) 
-    @param border_thickness_steps: number of steps to cop. grad. - depands on cell border thickness
+    @param index: indices of pixes sorted by polar coordinates (alpha, radius)
+    @param border_thickness_steps: number of steps to cop. grad. - depends on cell border thickness
     @return: gradient matrix for cell
     """
     # index of axis used to find max grad.
-    # PL: Indeks pomocniczy osi służący do wyznaczenia maksymalnego gradientu
     max_gradient_along_axis = 2
+
     # preparing the image limits (called subimage) for which grad. will be computed
-    # PL: Wymiary wycinka obrazu, dla którego będzie obliczany gradient
-    radius_lengths, angles = index.shape[0], index.shape[1]
+    radius_lengths, angles = index.shape[:2]
+
     # matrix init
     # for each single step for each border thick. separated grad. is being computed
-    # at the end the max. grad values are returned (for all steps and thick.)
-    # PL: Inicjacja macierzy dla obliczania gradientów
-    # PL: Dla każdego pojedynczego kroku dla zadanej grubości krawędzi komórki obliczany jest osobny gradient
-    # PL: Następnie zwracane są maksymalne wartości gradientu w danym punkcie dla wszystkich kroków grubości krawędzi
+    # at the end the max. grad values are returned (for all steps of thickness)
     gradients_for_steps = np.zeros((radius_lengths, angles, border_thickness_steps), dtype=np.float64)
-    # PL: Dla każdego kroku wynikającego z grubości krawędzi komórki:
-    # PL: Najmniejszy krok ma rozmiar 1, największy ma rozmiar: ${border_thickness_steps}
-    for border_thickness_step in range(1, int(border_thickness_steps) + 1):
 
+    # for every step of thickness:
+    for border_thickness_step in range(1, int(border_thickness_steps) + 1):
         # find beg. and end indices of input matrix for which the gradient will be computed
-        # PL: Wyznacz początek i koniec wycinka macierzy, dla którego będzie wyliczany gradient
         matrix_end = radius_lengths - border_thickness_step
         matrix_start = border_thickness_step
 
         # find beg. and end indices of pix. for which the gradient will be computed
-        # PL: Wyznacz początek i koniec wycinka indeksu pikseli, dla którego będzie wyliczany gradient
         starting_index = index[:matrix_end, :]
         ending_index = index[matrix_start:, :]
 
-        # find the spot in matrix where comp. gradient will go
-        # PL: Wyznacz początek i koniec wycinka macierzy wynikowej, do którego będzie zapisany obliczony gradient
+        # find internal in matrix where computed gradient will go
         intersect_start = int(math.ceil(border_thickness_step / 2.0))
         intersect_end = int(intersect_start + matrix_end)
 
-        # comp. current gradient for selected (sub)image 
-        # PL: Wylicz bieżącą wartość gradientu dla wyznaczonego wycinka obrazu
-        try:
-            current_step_gradient = im[Index.to_numpy(ending_index)] - im[Index.to_numpy(starting_index)]
-        except Exception:
-            print border_thickness_step
-            print radius_lengths
-            print matrix_start
-            print matrix_end
-            print ending_index
-            print starting_index
-
-            raise Exception
-
+        # comp. current gradient for selected (sub)image
+        current_step_gradient = im[Index.to_numpy(ending_index)] - im[Index.to_numpy(starting_index)]
         current_step_gradient /= np.sqrt(border_thickness_step)
-        # Zapisz gradient do wyznaczonego wycinka macierzy wyników
+
+        # save gradient to previously determined place in results matrix
         gradients_for_steps[intersect_start:intersect_end, :, border_thickness_step - 1] = current_step_gradient
 
     return gradients_for_steps.max(axis=max_gradient_along_axis)
+
+
+def extend_slices(my_slices, extension):
+    def extend_slice(my_slice, extend):
+        max_len = 100000
+        ind = (max(0, my_slice.indices(max_len)[0] - extend), my_slice.indices(max_len)[1] + extend)
+        return slice(*ind)
+
+    return extend_slice(my_slices[0], extension), extend_slice(my_slices[1], extension)
 
 
 def inslice_point(point_yx_in_slice, slices):
@@ -187,6 +178,7 @@ def polar_to_cartesian(polar_coordinate_boundary, origin_x, origin_y, polar_tran
 
     return px, py
 
+
 def mask_with_pil(ys, xs, yslice, xslice):
     from PIL import Image
     rxs = np.round(xs) - xslice[0]
@@ -203,6 +195,7 @@ def mask_with_pil(ys, xs, yslice, xslice):
     draw.draw_polygon(rxys, ink, 0)
     return np.array(img) != 0
 
+
 def star_in_polygon((max_y, max_x), polar_coordinate_boundary, seed_x, seed_y, polar_transform):
     polygon_x, polygon_y = polar_to_cartesian(polar_coordinate_boundary, seed_x, seed_y, polar_transform)
 
@@ -214,7 +207,7 @@ def star_in_polygon((max_y, max_x), polar_coordinate_boundary, seed_x, seed_y, p
     y1 = int(math.floor(np.min(polygon_y_bounded)))
     y2 = int(math.ceil(np.max(polygon_y_bounded)) + 1)
 
-    small_boolean_mask = mask_with_pil(polygon_y_bounded, polygon_x_bounded, (y1,y2), (x1,x2))
+    small_boolean_mask = mask_with_pil(polygon_y_bounded, polygon_x_bounded, (y1, y2), (x1, x2))
 
     boolean_mask = np.zeros((max_y, max_x), dtype=bool)
     boolean_mask[y1:y2, x1:x2] = small_boolean_mask
@@ -230,4 +223,16 @@ def multiply_list(ls, times):
     fraction_elements = int((times - int(times)) * list_length)
     res = ls * integer_times
     res += ls[:fraction_elements]
+    return res
+
+
+def fast_power(a, n):
+    mn = a
+    res = 1
+    n = int(n)
+    while n > 0:
+        if (n % 2 == 1):
+            res *= mn
+        mn = mn * mn
+        n /= 2
     return res

@@ -84,6 +84,7 @@ class Seeder(object):
     @staticmethod
     def rand_seeds(max_random_radius, times, seeds, min_random_radius=0):
         """
+        Generate (len(seeds) * times) random seeds within (min_random_radius:max_random_radius).
         @type seeds: list[Seed]
         """
 
@@ -224,28 +225,24 @@ class Seeder(object):
         # TODO: filter seeds using foreground mask ?
         # seeds = [seed for seed in seeds if self.images.foreground_mask[seed.y, seed.x]]
 
-        seeds = self._filter_seeds(seeds, all_seeds)
+        seeds = self.filter_seeds(self.images.image.shape, seeds, all_seeds)
 
         return seeds
 
-    def _filter_seeds(self, seeds, all_seeds):
+    def filter_seeds(self, image_shape, seeds, all_seeds):
         """
-        @param seeds:
+        Ignore seeds that are close image borders or already processed seeds.
+        @param image_shape: (y,x) image size
         @type seeds: [contrib.cell_star.core.seed.Seed]
+        @type all_seeds: [contrib.cell_star.core.seed.Seed]
         @return:
         """
         distance = self.parameters["segmentation"]["stars"]["step"] * self.parameters["segmentation"]["avgCellDiameter"]
         distance = float(max(distance, 0.5))  # not less than half of pixel length
-        ok_seeds = np.array([False for seed in seeds])
+        ok_seeds = np.array([False for _ in seeds])
 
-        # TODO: obecnie parametr ustawiony na -1 - wykryć gdzie jest konfigurowany w MATLABIE
-        # Wygląda na to, że jest to lista wymiarów klatki/zdjęcia
-        # if self.parameters["segmentation"]["transform"]["originalImDim"] > 0:
-        grid_size = int(round(max(self.parameters["segmentation"]["transform"]["originalImDim"]) * 1.1 / distance))
-        im_x = self.parameters["segmentation"]["transform"]["originalImDim"][1]
-        im_y = self.parameters["segmentation"]["transform"]["originalImDim"][0]
-        # else:
-        #    grid_size = 10
+        grid_size = int(round(max(image_shape) * 1.1 / distance))
+        im_y, im_x = image_shape
 
         # Create grid
         seeds_grid = SeedGrid(grid_size)
@@ -282,16 +279,12 @@ class Seeder(object):
         return [seeds[i] for i in range(len(seeds)) if ok_seeds[i]]
 
 
-def seed_is_new(_seed, all_seeds, distance):
-    for seed in all_seeds:
-        if euclidean_norm(_seed.as_xy(), seed.as_xy()) < distance:
-            return False
-
-    return True
+def seed_is_new(seed, current_seeds, distance):
+    return all([euclidean_norm(seed.as_xy(), cs.as_xy()) >= distance for cs in current_seeds])
 
 
-def point_list_as_seeds(points, origin):
-    return [Seed(point[0], point[1], origin) for point in points]
+def point_list_as_seeds(pointsYX, origin):
+    return [Seed(point[0], point[1], origin) for point in pointsYX]
 
 
 class SeedGrid(object):

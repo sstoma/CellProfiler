@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
-
-# External imports
-import os
+"""
+Image util module contains additional methods for easy image manipulations.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
 import numpy as np
 import scipy as sp
@@ -11,17 +12,7 @@ import scipy.ndimage
 from numpy import argwhere
 from scipy.ndimage.filters import *
 
-
-def fast_power(a, n):
-    mn = a
-    res = 1
-    n = int(n)
-    while n > 0:
-        if(n%2 == 1):
-            res *= mn
-        mn = mn * mn
-        n /= 2
-    return res
+from calc_util import extend_slices, fast_power
 
 
 def fft_convolve(in1, in2, times):
@@ -52,14 +43,6 @@ def fft_convolve(in1, in2, times):
     ret = ret.real
 
     return _centered(ret, s1)
-
-
-def extend_slices(my_slices, extension):
-    def extend_slice(my_slice, extend):
-        ind = (max(0, my_slice.indices(100000)[0] - extend), my_slice.indices(100000)[1] + extend)
-        return slice(*ind)
-
-    return extend_slice(my_slices[0], extension), extend_slice(my_slices[1], extension)
 
 
 def get_bounding_box(image_mask):
@@ -191,13 +174,13 @@ def fill_holes(mask, kernel_size, minimal_hole_size):
     return mask
 
 
-def contain_pixel(shape, pixel):
+def contain_pixel(shape, pixelYX):
     """
     Trims pixel to given dimentions, converts pixel position to int
     @param shape: size (height, width) exclusive
     @param pixel: pixel to push inside shape
     """
-    (py, px) = pixel
+    (py, px) = pixelYX
     (py, px) = ((np.minimum(np.maximum(py + 0.5, 0), shape[0] - 1)).astype(int),
                 (np.minimum(np.maximum(px + 0.5, 0), shape[1] - 1)).astype(int))
     return py, px
@@ -206,24 +189,22 @@ def contain_pixel(shape, pixel):
 def find_maxima(image):
     """
     Finds local maxima in given image
-    @param image: image from which maxima will be found
+    @param image: image for which maxima will be found
     """
     height = image.shape[0]
     width = image.shape[1]
 
-    right = np.zeros(image.shape)
-    left = np.zeros(image.shape)
-    up = np.zeros(image.shape)
-    down = np.zeros(image.shape)
+    right = np.zeros(image.shape, dtype=bool)
+    left = np.zeros(image.shape, dtype=bool)
+    up = np.zeros(image.shape, dtype=bool)
+    down = np.zeros(image.shape, dtype=bool)
 
-    epsilon = 0.00  # 0001
+    right[:, 0:width - 1] = image[:, 0:width - 1] > image[:, 1:width]
+    left[:, 1:width] = image[:, 1:width] > image[:, 0:width - 1]
+    up[0:height - 1, :] = image[0:height - 1, :] > image[1:height, :]
+    down[1:height, :] = image[1:height, :] > image[0:height - 1, :]
 
-    right[0:height, 0:width - 1] = np.array(image[:, 0:width - 1] - image[:, 1:width] > epsilon)
-    left[0:height, 1:width] = np.array(image[:, 1:width] - image[:, 0:width - 1] > epsilon)
-    up[0:height - 1, 0:width] = np.array(image[0:height - 1, :] - image[1:height, :] > epsilon)
-    down[1:height, 0:width] = np.array(image[1:height, :] - image[0:height - 1, :] > epsilon)
-
-    return right * left * up * down
+    return right & left & up & down
 
 
 def exclude_segments(image, segments, val):
@@ -265,7 +246,7 @@ def image_blur(image, times):
         return blurred
 
 
-def image_smooth(image, radius, fft_use = True):
+def image_smooth(image, radius, fft_use=True):
     """
     Performs image blur with circular kernel.
     @param image: image to be blurred (assumed as numpy.array of values from 0 to 1)
@@ -286,7 +267,6 @@ def image_smooth(image, radius, fft_use = True):
         return convolve(image, kernel, mode='reflect', cval=0.0)
 
 
-
 def image_normalize(image):
     """
     Performs image normalization (vide: matlab mat2gray)
@@ -305,16 +285,11 @@ def image_normalize(image):
     return np.minimum(np.maximum(image_normalized, 0), 1)
 
 
-def tiff16_to_float(image):
-    image = np.array(image, dtype=float)
-    return (image - image.min()) / image.max()
-
-
 def set_image_border(image, val):
     """
     Sets pixel values at image borders to given value
     @param image: image that borders will be set to given value
-    @param val: value to be set
+    @param val: value to be s et
     """
     image[0, :] = val
     image[:, 0] = val
@@ -322,34 +297,6 @@ def set_image_border(image, val):
     image[:, image.shape[1] - 1] = val
 
     return image
-
-
-def paths(test_path):
-    return os.path.join(test_path, 'test_reference'), os.path.join(test_path, 'frames'), os.path.join(test_path,
-                                                                                                      'background')
-
-
-def frame_exists(frames_path, frame):
-    return os.path.exists(frames_path + frame)
-
-
-def load_ref_image(test_reference_path, frame, name):
-    return load_image(test_reference_path + frame + "/" + name + ".tif")
-
-
-def load_frame(frames_path, filename):
-    return load_image(frames_path + filename)
-
-
-def load_frame_background(background_path, filename):
-    try:
-        image = load_image(background_path + filename)
-        if image is None:
-            return None
-
-        return image
-    except IOError:
-        return None
 
 
 def load_image(filename, scaling=True):

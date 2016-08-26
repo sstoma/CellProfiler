@@ -52,7 +52,7 @@ def load_from_testset(filepath):
 
 
 def try_load_image(image_path):
-    return image_util.load_frame(corpus_path, image_path)
+    return image_util.load_frame(corpus_path + image_path)
 
 
 def run_pf(input_image, background_image, ignore_mask_image, gt_label, parameters, precision, avg_cell_diameter, callback_progress = None):
