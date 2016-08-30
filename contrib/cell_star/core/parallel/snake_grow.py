@@ -69,8 +69,8 @@ def grow_single_snake(frame, images, parameters, seed):
     snakes_to_grow = [(copy(s), w) for w in size_weight_list]
 
     for snake, weight in snakes_to_grow:
-        snake.star_grow(size_weight=weight, polar_transform=polar_transform)
-        snake.calculate_properties_vec(polar_transform)
+        snake.grow(size_weight=weight, polar_transform=polar_transform)
+        snake.evaluate(polar_transform)
 
     best_snake = sorted(snakes_to_grow, key=lambda (sn, _): sn.rank)[0][0]
 

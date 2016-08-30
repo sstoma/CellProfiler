@@ -122,7 +122,7 @@ def filter_snakes_as_singles(parameters, images, snakes):
     """
     @type snakes: list[(GTSnake, PFRankSnake)]
     """
-    filterer = SnakeFilter(parameters, images)
+    filterer = SnakeFilter(images, parameters)
     proper_snakes = [(gt,snake) for gt,snake in snakes if not filterer.is_single_snake_discarded(snake.grown_snake)]
     logger.debug("Filtering left %d out of %d rank snakes" % (len(snakes) - len(proper_snakes), len(snakes)))
     return proper_snakes
@@ -192,9 +192,9 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
     radius = params["segmentation"]["seeding"]["randomDiskRadius"] * params["segmentation"]["avgCellDiameter"]
     radius_big = params["segmentation"]["avgCellDiameter"] * 1.5
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=2*radius/3.0)
-                           + get_gt_snake_seeds(gt_snake, radius=radius, times=8, min_radius=4*radius/5.0)
-                           + get_gt_snake_seeds(gt_snake, radius=radius_big, times=8, min_radius=3*radius_big/4.0)
+                           get_gt_snake_seeds(gt_snake, max_radius=radius, number=8, min_radius=2 * radius / 3.0)
+                           + get_gt_snake_seeds(gt_snake, max_radius=radius, number=8, min_radius=4 * radius / 5.0)
+                           + get_gt_snake_seeds(gt_snake, max_radius=radius_big, number=8, min_radius=3 * radius_big / 4.0)
                             ]
 
     gt_snake_grown_seed_pairs = \
@@ -226,7 +226,7 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
     stop = time.clock()
 
     best_params_org = pf_rank_parameters_decode(best_params_encoded)
-    best_params_normalized = pf_rank_parameters_decode(best_params_encoded, True)
+    best_params_normalized = pf_rank_parameters_decode(best_params_encoded)
     best_params_full = PFRankSnake.merge_rank_parameters(params, best_params_normalized)
 
     explore_cellstar(image=images.image, images=images, params=best_params_full,

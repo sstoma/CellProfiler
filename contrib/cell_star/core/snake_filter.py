@@ -19,7 +19,7 @@ class SnakeFilter(object):
     Discard snakes that overlap with already approved ones.
     """
 
-    def __init__(self, parameters, images):
+    def __init__(self, images, parameters):
         """
         @type parameters: dict
         @type images: core.image_repo.ImageRepo

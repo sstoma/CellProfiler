@@ -5,11 +5,9 @@ Date: 2013-2016
 Website: http://cellstar-algorithm.org/
 """
 
-import sys
-
 import numpy as np
 
-from contrib.cell_star.config.config import default_config
+from contrib.cell_star.core.config import default_config
 
 
 def default_parameters(segmentation_precision=-1, avg_cell_diameter=-1):

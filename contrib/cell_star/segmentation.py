@@ -5,36 +5,31 @@ Date: 2013-2016
 Website: http://cellstar-algorithm.org/
 """
 
-# External imports
-import logging
 import ast
+import logging
+
 logger = logging.getLogger(__name__)
 from copy import copy
-import sys
-# Internal imports
+
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.utils.params_util import default_parameters
 from contrib.cell_star.utils import image_util, debug_util
 from contrib.cell_star.core.seeder import Seeder
-from contrib.cell_star.core.seed import Seed
 from contrib.cell_star.core.snake import Snake
 from contrib.cell_star.core.snake_filter import SnakeFilter
 from contrib.cell_star.core.polar_transform import PolarTransform
 from contrib.cell_star.parameter_fitting.pf_auto_params import rank_parameters_range as rank_auto_params
 from contrib.cell_star.parameter_fitting.pf_auto_params import parameters_range as snake_auto_params
-from contrib.cell_star.utils.debug_util import memory_profile, speed_profile
 
 
 class Segmentation(object):
-    def __init__(self, segmentation_precision=7, avg_cell_diameter=35, debug_level=0):
+    def __init__(self, segmentation_precision=9, avg_cell_diameter=35):
         self.parameters = default_parameters(segmentation_precision, avg_cell_diameter)
         self.images = None
         self.all_seeds = []
         self.seeds = []
-        # seeds from which we already have snakes
-        # PL: Seedy, z których już wyrosły snake'i
-        self.grown_seeds = set()
+        self.grown_seeds = set()  # seeds from which we already have snakes
         self.snakes = []
         self.new_snakes = []
         self._seeder = None
@@ -44,13 +39,6 @@ class Segmentation(object):
                                                        self.parameters["segmentation"]["stars"]["step"],
                                                        self.parameters["segmentation"]["stars"]["maxSize"])
         self.debug_output_image_path = None
-
-    def clear_lists(self):
-        self.all_seeds = []
-        self.seeds = []
-        self.grown_seeds = set()
-        self.snakes = []
-        self.new_snakes = []
 
     @property
     def seeder(self):
@@ -65,6 +53,13 @@ class Segmentation(object):
             self.init_filter()
 
         return self._filter
+
+    def clear_lists(self):
+        self.all_seeds = []
+        self.seeds = []
+        self.grown_seeds = set()
+        self.snakes = []
+        self.new_snakes = []
 
     def set_frame(self, frame):
         # Extract previous background
@@ -88,14 +83,14 @@ class Segmentation(object):
         self._seeder = Seeder(self.images, self.parameters)
 
     def init_filter(self):
-        self._filter = SnakeFilter(self.parameters, self.images)
+        self._filter = SnakeFilter(self.images, self.parameters)
 
     def decode_auto_params(self, text):
         """
         Decode automatic parameters from text and apply to self.
 
         @param text: parameters denoted as python list
-        @:return true if parsing was successful
+        @return true if parsing was successful
         """
         return Segmentation.decode_auto_params_into(self.parameters, text)
 
@@ -105,7 +100,7 @@ class Segmentation(object):
         Decode automatic parameters from text and apply to self.
 
         @param text: parameters denoted as python list
-        @:return true if parsing was successful
+        @return true if parsing was successful
         """
         new_stars = copy(complete_params["segmentation"]["stars"])
         new_ranking = copy(complete_params["segmentation"]["ranking"])
@@ -155,7 +150,7 @@ class Segmentation(object):
         return Segmentation.encode_auto_params_from_all_params(self.parameters)
 
     def pre_process(self):
-        # Condition always false because property 'background' is never None, but important :)
+        # background getter is never None but it creation background only if not existant
         if self.images.background is None:
             self.images.calculate_background()
 
@@ -186,7 +181,7 @@ class Segmentation(object):
                 self.grown_seeds.add(seed)
 
     def grow_snakes(self):
-        new_snakes = []
+        grown_snakes = []
         size_weights = self.parameters["segmentation"]["stars"]["sizeWeight"]
         logger.debug("%d snakes seeds to grow with %d weights options -> %d snakes to calculate"%(len(self.new_snakes), len(size_weights), len(self.new_snakes) * len(size_weights)))
         for snake in self.new_snakes:
@@ -194,8 +189,8 @@ class Segmentation(object):
             for weight in size_weights:
                 curr_snake = copy(snake)
 
-                curr_snake.star_grow(weight, self.polar_transform)
-                curr_snake.calculate_properties_vec(self.polar_transform)
+                curr_snake.grow(weight, self.polar_transform)
+                curr_snake.evaluate(self.polar_transform)
 
                 if best_snake is None:
                     best_snake = curr_snake
@@ -203,13 +198,13 @@ class Segmentation(object):
                     if curr_snake.rank < best_snake.rank:
                         best_snake = curr_snake
 
-            new_snakes.append(best_snake)
+            grown_snakes.append(best_snake)
 
-        self.new_snakes = new_snakes
+        self.new_snakes = grown_snakes
 
     def evaluate_snakes(self):
         for snake in self.new_snakes:
-            snake.calculate_properties_vec(self.polar_transform)
+            snake.evaluate(self.polar_transform)
 
     def filter_snakes(self):
         self.snakes = self.filter.filter(self.snakes + self.new_snakes)
@@ -239,7 +234,6 @@ class Segmentation(object):
         self.filter_snakes()
         logger.debug("done")
 
-    #@memory_profile
     def run_segmentation(self):
         logger.debug("preproces...")
         self.pre_process()
@@ -247,8 +241,4 @@ class Segmentation(object):
         debug_util.explore_cellstar(self)
         for step in range(self.parameters["segmentation"]["steps"]):
             self.run_one_step(step)
-        # debug_util.image_show(self.images.image + (self.images.segmentation > 0), 1, override=True)
         return self.images.segmentation, self.snakes
-
-    def formatted_result(self, result_format):
-        return result_format(self.images.segmentation, self.snakes)

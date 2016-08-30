@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+Config is a storage for default CellStar configuration.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
 
 def default_config():

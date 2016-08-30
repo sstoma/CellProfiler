@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mr�z'
+"""
+Pf process is the core of contour parameters fitting.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
 import copy
 import random
+import sys
 import time
 from multiprocessing import Process, Queue
 
@@ -78,7 +83,7 @@ def distance_norm(fitnesses):
 
 def grow_single_seed(seed, images, init_params, pf_param_vector):
     pfsnake = PFSnake(seed, images, init_params)
-    return pfsnake.grow(pf_parameters_decode(pf_param_vector, pfsnake.orig_size_weight_list, init_params["segmentation"]["stars"]["step"], init_params["segmentation"]["avgCellDiameter"], init_params["segmentation"]["stars"]["maxSize"]))
+    return pfsnake.grow(pf_parameters_decode(pf_param_vector, pfsnake.orig_size_weight_list))
 
 
 def snakes_fitness(gt_snake_seed_pairs, images, parameters, pf_param_vector, debug=False):
@@ -95,29 +100,29 @@ def snakes_fitness(gt_snake_seed_pairs, images, parameters, pf_param_vector, deb
 #
 
 
-def get_gt_snake_seeds(gt_snake, times=3, radius=5, min_radius=0):
+def get_gt_snake_seeds(gt_snake, number, max_radius, min_radius=0):
     """
     Create random seeds inside gt snake.
     @type gt_snake: GTSnake
     """
     seed = Seed(gt_snake.centroid_x, gt_snake.centroid_y, "optimize_star_parameters")
     seeds = [seed]
-    left = times
+    left = number
     while left > 0:
-        random_seeds = Seeder.rand_seeds(radius, left, [seed], min_random_radius=min_radius)
+        random_seeds = Seeder.rand_seeds(max_radius, left, [seed], min_random_radius=min_radius)
         inside_seeds = [s for s in random_seeds if gt_snake.is_inside(s.x, s.y)]
         seeds += inside_seeds
-        left = times - (len(seeds) - 1)
+        left = number - (len(seeds) - 1)
         min_radius /= 1.1 # make sure that it finish
 
     return seeds
 
 
 def get_size_weight_list(params):
-    l = params["segmentation"]["stars"]["sizeWeight"]
-    if isinstance(l, float):
-        l = [l]
-    return l
+    size_weight = params["segmentation"]["stars"]["sizeWeight"]
+    if isinstance(size_weight, float):
+        size_weight = [size_weight]
+    return size_weight
 
 
 def prepare_snake_seed_pairs(gt_snakes, initial_parameters):
@@ -126,12 +131,12 @@ def prepare_snake_seed_pairs(gt_snakes, initial_parameters):
     for gt_snake in gt_snakes:
         gt_snake.set_erosion(4)
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
-                           get_gt_snake_seeds(gt_snake, times=3, radius=radius, min_radius=2*radius/3.0)]
+                           get_gt_snake_seeds(gt_snake, number=3, max_radius=radius, min_radius=2 * radius / 3.0)]
     random.shuffle(gt_snake_seed_pairs)
     return gt_snake_seed_pairs
 
 
-def pf_get_distances(gt_snakes, images, initial_parameters, callback=keep_3_best):
+def pf_get_distances(gt_snakes, images, initial_parameters, callback=None):
     gt_snake_seed_pairs = prepare_snake_seed_pairs(gt_snakes, initial_parameters)
     pick_seed_pairs = max(min_number_of_chosen_seeds, max_number_of_chosen_snakes /
                           len(initial_parameters["segmentation"]["stars"]["sizeWeight"]))
@@ -211,7 +216,7 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
     optimized = optimize(method, gt_snakes, images, params, precision, avg_cell_diameter)
 
     best_arg = optimized[0]
-    best_params = pf_parameters_decode(optimized[0], get_size_weight_list(params), params["segmentation"]["stars"]["step"], avg_cell_diameter, params["segmentation"]["stars"]["maxSize"])
+    best_params = pf_parameters_decode(optimized[0], get_size_weight_list(params))
     best_score = optimized[1]
 
     stop = time.clock()

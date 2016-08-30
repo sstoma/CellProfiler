@@ -85,8 +85,7 @@ class Snake(object):
         self.free_border_entropy = 0.0
         self.properties_vector_cached = {}
 
-    @speed_profile
-    def star_grow(self, size_weight, polar_transform):
+    def grow(self, size_weight, polar_transform):
         """
         Grow the snake from seed.
         @type polar_transform: contrib.cell_star.core.vectorized.polar_transform.PolarTransform
@@ -254,8 +253,7 @@ class Snake(object):
 
         return xmins2, xmaxs
 
-    @speed_profile
-    def calculate_properties_vec(self, polar_transform):
+    def evaluate(self, polar_transform):
         """
         Analyse contour and calculate all it properties and ranking.
         @type polar_transform: contrib.cell_star.core.vectorized.polar_transform.PolarTransform

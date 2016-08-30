@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Images repository calculates and stores intermediate images used in segmentation process.
+Explorer is a utility to check and find more detailed information on how CellStar performs on a given data.
 Date: 2013-2016
 Website: http://cellstar-algorithm.org/
 """

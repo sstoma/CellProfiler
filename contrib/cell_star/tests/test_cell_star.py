@@ -165,6 +165,8 @@ class test_CellStar(unittest.TestCase):
         from contrib.cell_star.parameter_fitting.pf_auto_params import *
         params = [0.1, 0.3, 0.5, 0.7, 0.9]
 
+        self.fail("Normalization is off")
+
         res_org = pf_rank_parameters_decode(params, False)
         self.assertEqual(0.1 * 600, res_org["avgBorderBrightnessWeight"])
         self.assertEqual(-50 + (0.3 * 100), res_org["avgInnerBrightnessWeight"])

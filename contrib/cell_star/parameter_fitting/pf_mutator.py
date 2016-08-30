@@ -1,23 +1,30 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+Mutator can be used to change (ie mutate) existing snakes to provide higher variability in ground_truth pool.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
-import numpy as np
 import copy
 import random
 
+import numpy as np
+
 from contrib.cell_star.core.point import *
 from contrib.cell_star.utils.calc_util import polar_to_cartesian
+
 
 def add_mutations(gt_and_grown, avg_cell_diameter):
     mutants = []
     mutation_radiuses = 0.2 * avg_cell_diameter
     for (gt, grown) in gt_and_grown:
         mutants += [
-                    (gt, grown.create_mutation(mutation_radiuses * 2, random_poly=True)),
-                    (gt, grown.create_mutation(-mutation_radiuses * 2, random_poly=True)),
-                    (gt, grown.create_mutation(mutation_radiuses)), (gt, grown.create_mutation(-mutation_radiuses)),
-                    ]
+            (gt, grown.create_mutation(mutation_radiuses * 2, random_poly=True)),
+            (gt, grown.create_mutation(-mutation_radiuses * 2, random_poly=True)),
+            (gt, grown.create_mutation(mutation_radiuses)), (gt, grown.create_mutation(-mutation_radiuses)),
+        ]
     return gt_and_grown + mutants
+
 
 def create_mutant_from_change(org_snake, polar_transform, boundary_change):
     mutant_snake = copy.copy(org_snake)
@@ -38,7 +45,7 @@ def create_mutant_from_change(org_snake, polar_transform, boundary_change):
     mutant_snake.points = [Point(x, y) for x, y in zip(px, py)]
 
     # TODO need to update self.final_edgepoints to calculate properties (for now we ignore this property)
-    mutant_snake.calculate_properties_vec(polar_transform)
+    mutant_snake.evaluate(polar_transform)
 
     return mutant_snake
 
@@ -47,12 +54,14 @@ def create_poly_mutation(org_snake, polar_transform, max_diff):
     # change to pixels
     length = org_snake.polar_coordinate_boundary.size
     max_diff /= polar_transform.step
-    def polynomial(x1,x2):
+
+    def polynomial(x1, x2):
         def eval(x):
-            return x * (x-length) * (x-x1) * (x*0.4-x2)
+            return x * (x - length) * (x - x1) * (x * 0.4 - x2)
+
         return eval
 
-    poly = polynomial(random.uniform(0.001,length), random.uniform(0.001,length))
+    poly = polynomial(random.uniform(0.001, length), random.uniform(0.001, length))
     boundary_change = np.array([poly(x) for x in range(length)])
 
     M = abs(boundary_change).max()
