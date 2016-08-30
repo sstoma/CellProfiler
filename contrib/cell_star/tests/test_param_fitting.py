@@ -9,7 +9,7 @@ Website: http://cellstar-algorithm.org/
 import logging
 import sys
 
-import contrib.cell_star.parameter_fitting.test_pf as test_pf
+import contrib.cell_star.tests.test_contour_pf as test_pf
 
 import contrib.cell_star.parameter_fitting.pf_process as pf_process
 import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank

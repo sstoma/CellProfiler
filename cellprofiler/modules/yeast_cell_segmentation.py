@@ -1105,7 +1105,6 @@ class IdentifyYeastCells(cpmi.Identify):
             self.last_labeling = (hash(abs(np.sum(input_image))), labels)
 
         # check if the user provided GT
-        # TODO check for con. comp. and e.g. let it go if more then 3 cells were added
         if not labels.any():
             with wx.MessageDialog(None,
                                   "Please correctly select at least one cell. Otherwise, parameters can not be autoadapted!",
