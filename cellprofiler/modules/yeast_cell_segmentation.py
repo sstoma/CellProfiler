@@ -174,8 +174,7 @@ try:
 
     from contrib.cell_star.utils.params_util import default_parameters, create_size_weights
     from contrib.cell_star.segmentation import Segmentation
-    from contrib.cell_star.parameter_fitting.test_pf import run_pf
-    from contrib.cell_star.parameter_fitting.test_rank_pf import run_rank_pf
+    from contrib.cell_star.parameter_fitting.pf_runner import run_pf, run_rank_pf
     from contrib.cell_star.utils.debug_util import memory_profile, speed_profile, explorer_expected
 
 except ImportError as e: 

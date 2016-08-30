@@ -1,14 +1,21 @@
-__author__ = 'Adam Kaczmarek, Filip Mroz'
+# -*- coding: utf-8 -*-
+"""
+Script used for external testing of entire parameter fitting process.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
+
 
 import logging
 import sys
 
+import contrib.cell_star.parameter_fitting.test_pf as test_pf
+
 import contrib.cell_star.parameter_fitting.pf_process as pf_process
 import contrib.cell_star.parameter_fitting.pf_rank_process as pf_rank
-import contrib.cell_star.parameter_fitting.test_pf as test_pf
 import contrib.cell_star.utils.debug_util as debug_util
-from contrib.cell_star.parameter_fitting.test_rank_pf import test_rank_pf
 from contrib.cell_star.segmentation import Segmentation
+from contrib.cell_star.tests.test_rank_pf import test_rank_pf
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +48,7 @@ if __name__ == "__main__":
     #from contrib.cell_star.tests.experiments import smooth_contour_turns
     #Snake.smooth_contour = smooth_contour_turns
 
-    test_pf.corpus_path = sys.argv[1]
+    test_pf.default_data_path = sys.argv[1]
     image_path = sys.argv[2]
     mask_path = sys.argv[3]
     precision = int(sys.argv[4])

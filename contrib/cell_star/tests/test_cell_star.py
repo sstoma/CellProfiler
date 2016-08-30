@@ -1,7 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+This file contains internal CellStar unit tests.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
+
 import unittest
-
 import numpy as np
-
 
 class test_CellStar(unittest.TestCase):
     def test_fill_holes(self):
@@ -39,13 +44,13 @@ class test_CellStar(unittest.TestCase):
         from contrib.cell_star.core.seed import Seed
         from contrib.cell_star.core.seeder import Seeder
         np.random.seed(1)
+
         def assertIsClose(x, y, seed):
             self.assertEqual(x, int(seed.x + .5))
             self.assertEqual(y, int(seed.y + .5))
 
         def run_and_sort(times, seeds):
             return sorted(Seeder.rand_seeds(0.1, times, seeds), key=lambda x: x.x)
-
 
         seeds = []
         seeds.append(Seed(1, 1, 'test1'))
@@ -122,7 +127,7 @@ class test_CellStar(unittest.TestCase):
         from contrib.cell_star.utils import calc_util
 
         mask_1 = [False, False, True, False, True, True, False]
-        values_1 = [2134,1564,10,3234,14,6,5345]
+        values_1 = [2134, 1564, 10, 3234, 14, 6, 5345]
         res_1 = list(values_1)
         calc_util.interpolate_radiuses_old(mask_1, len(mask_1), res_1)
         self.assertEqual([8, 9, 10, 12, 14, 6, 7], res_1)
@@ -133,15 +138,15 @@ class test_CellStar(unittest.TestCase):
 
     def test_gt_snake_seeds(self):
         from contrib.cell_star.parameter_fitting.pf_process import *
-        mask = np.zeros((20,20))
+        mask = np.zeros((20, 20))
         mask[3:8, 5:14] = 1
         mask[7:13, 7:10] = 1
 
-        eroded_mask = np.zeros((20,20))
+        eroded_mask = np.zeros((20, 20))
         eroded_mask[4:7, 6:13] = 1
         eroded_mask[7:12, 8] = 1
 
-        gtsnake = GTSnake(mask, Seed(7,5,"test"))
+        gtsnake = GTSnake(mask, Seed(7, 5, "test"))
         self.assertTrue((eroded_mask == gtsnake.eroded_mask).all())
         self.assertTrue(gtsnake.is_inside(6, 4))
         self.assertTrue(gtsnake.is_inside(8, 7))

@@ -20,11 +20,10 @@ from contrib.cell_star.tests.experiments import *
 from contrib.cell_star.utils.debug_util import draw_snakes_on_axes, draw_seeds_on_axes
 from contrib.cell_star.utils.image_util import load_image
 
-# input_path = r"D:\Fafa\Drozdze\CellStarTesting\Data\Benchmark2\TestSet10_1k\frames\Point0000_Seq00000022.tif"
-
 
 class Explorer:
     cell_star_smoothing = Snake.smooth_contour
+
     def __init__(self, image, images, ui, cell_star, params=None):
         """
         @type cell_star: Segmentation
@@ -103,7 +102,8 @@ class Explorer:
             if all(snake.polar_coordinate_boundary <= 1):  # minimal step is 1 (see snake_grow)
                 snake.rank = Snake.max_rank
             else:
-                snake.rank = snake.star_rank(params["segmentation"]["ranking"], params["segmentation"]["avgCellDiameter"])
+                snake.rank = snake.star_rank(params["segmentation"]["ranking"],
+                                             params["segmentation"]["avgCellDiameter"])
 
     def grow_and_show(self, x, y):
         pfsnake = PFSnake(Seed(x, y, "click"), self.images, self.cell_star.parameters)
@@ -112,12 +112,13 @@ class Explorer:
         self.snakes += pfsnake.snakes
 
         draw_snakes_on_axes(sorted(pfsnake.snakes, key=lambda s: -s.rank), self.ui.axes)
-        #draw_snakes_on_axes([pfsnake.best_snake], self.ui.axes)
+        # draw_snakes_on_axes([pfsnake.best_snake], self.ui.axes)
         pass
 
 
 class ExplorerFrame(wx.Dialog):
     ABORTED = -1
+
     def __init__(self, images, parent=None, id=wx.ID_ANY, title='CellStar explorer', x=900, y=600):
         """
         @type images: ImageRepo
@@ -196,18 +197,16 @@ if __name__ == "__main__":
 
     debug_util.DEBUGING = True
     input_path = sys.argv[1]
-    #image2 = load_image("D:\Fafa\Drozdze\CellStarTesting\Data\Benchmark1\TestSet6\BF_frame001_invert.tif")
+    # image2 = load_image("D:\Fafa\Drozdze\CellStarTesting\Data\Benchmark1\TestSet6\BF_frame001_invert.tif")
 
     image = load_image(input_path)
-    #image3 = 1 - image
-    #p2 = debug_util.image_save(image2, "Image2_Invert")
+    # image3 = 1 - image
+    # p2 = debug_util.image_save(image2, "Image2_Invert")
 
-    #p1 = debug_util.image_save(image, "Image1")
-    #read2 = load_image(p2)
+    # p1 = debug_util.image_save(image, "Image1")
+    # read2 = load_image(p2)
 
-    #read1 = load_image(p1)
-
-
+    # read1 = load_image(p1)
 
     cell_star = Segmentation(12, average_cell_diameter)
     cell_star.set_frame(image)

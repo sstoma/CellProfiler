@@ -19,6 +19,7 @@ random.seed(1)
 np.random.seed(1)
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 from contrib.cell_star.utils.params_util import *
@@ -26,11 +27,11 @@ from contrib.cell_star.core.seed import Seed
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.parameter_fitting.pf_snake import PFSnake, GTSnake
 from contrib.cell_star.core.seeder import Seeder
-from contrib.cell_star.segmentation import Segmentation
-from contrib.cell_star.utils.debug_util import image_show, image_save, explore_cellstar
+from contrib.cell_star.utils.debug_util import explore_cellstar
 from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_parameters_decode
 
 import cellprofiler.preferences
+
 get_max_workers = cellprofiler.preferences.get_max_workers
 
 min_number_of_chosen_seeds = 6
@@ -41,21 +42,24 @@ max_number_of_chosen_snakes = 20
 # PROGRESS CALLBACKS
 #
 #
+
 ESTIMATED_CALCULATIONS_NUMBER = 3000.0
 callback_progress = None
 
 
 def show_progress(current_distance, calculation):
     if calculation % 100 == 0:
-        logger.debug("Current distance: %f, Best: %f, Calc %d"%(current_distance, best_so_far,calculation))
+        logger.debug("Current distance: %f, Best: %f, Calc %d" % (current_distance, best_so_far, calculation))
     if callback_progress is not None and calculation % (ESTIMATED_CALCULATIONS_NUMBER / 50) == 0:
         callback_progress(float(calculation) / ESTIMATED_CALCULATIONS_NUMBER)
+
 
 #
 #
 # COST FUNCTION AND FITNESS
 #
 #
+
 best_so_far = 1
 calculations = 0
 best_3 = []
@@ -88,7 +92,7 @@ def grow_single_seed(seed, images, init_params, pf_param_vector):
 
 def snakes_fitness(gt_snake_seed_pairs, images, parameters, pf_param_vector, debug=False):
     gt_snake_grown_seed_pairs = [(gt_snake, grow_single_seed(seed, images, parameters, pf_param_vector)) for
-                                     gt_snake, seed in gt_snake_seed_pairs]
+                                 gt_snake, seed in gt_snake_seed_pairs]
 
     return np.array([pf_s.multi_fitness(gt_snake) for gt_snake, pf_s in gt_snake_grown_seed_pairs])
 
@@ -113,7 +117,7 @@ def get_gt_snake_seeds(gt_snake, number, max_radius, min_radius=0):
         inside_seeds = [s for s in random_seeds if gt_snake.is_inside(s.x, s.y)]
         seeds += inside_seeds
         left = number - (len(seeds) - 1)
-        min_radius /= 1.1 # make sure that it finish
+        min_radius /= 1.1  # make sure that it finish
 
     return seeds
 
@@ -143,13 +147,13 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=None):
     chosen_gt_snake_seed_pairs = gt_snake_seed_pairs[:pick_seed_pairs]
 
     explore_cellstar(image=images.image, images=images, params=initial_parameters,
-                                  seeds=[sp[1] for sp in gt_snake_seed_pairs],
-                                  snakes=[])
+                     seeds=[sp[1] for sp in gt_snake_seed_pairs],
+                     snakes=[])
 
     def create_distance_function(pairs_to_use):
         def distance(partial_parameters, debug=False):
-            #random.shuffle(pairs_to_use)
-            #randoms_pair = pairs_to_use[:pick_seed_pairs]
+            # random.shuffle(pairs_to_use)
+            # randoms_pair = pairs_to_use[:pick_seed_pairs]
             current_distance = distance_norm(
                 snakes_fitness(pairs_to_use, images, initial_parameters, partial_parameters, debug=debug)
             )
@@ -165,31 +169,12 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=None):
 
 #
 #
-# VISUALIZATION
-#
-#
-
-def test_trained_parameters(image, star_params, ranking_params, precision, avg_cell_diameter, output_name=None):
-    seg = Segmentation(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
-    for k, v in star_params.iteritems():
-        seg.parameters["segmentation"]["stars"][k] = v
-    for k, v in ranking_params.iteritems():
-        seg.parameters["segmentation"]["ranking"][k] = v
-
-    seg.set_frame(image)
-    seg.run_segmentation()
-    if output_name is None:
-        image_show(seg.images.segmentation, 1)
-    else:
-        image_save(seg.images.segmentation, output_name)
-
-#
-#
 # OPTIMIZATION
 #
 #
 
-def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_params=None, background_image=None, ignore_mask=None):
+def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_params=None, background_image=None,
+        ignore_mask=None):
     global best_3, calculations
     """
     :param image: input image
@@ -213,23 +198,14 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
     start = time.clock()
     best_3 = []
     calculations = 0
-    optimized = optimize(method, gt_snakes, images, params, precision, avg_cell_diameter)
+    best_arg, best_score = optimize(method, gt_snakes, images, params, precision, avg_cell_diameter)
 
-    best_arg = optimized[0]
-    best_params = pf_parameters_decode(optimized[0], get_size_weight_list(params))
-    best_score = optimized[1]
+    best_params = pf_parameters_decode(best_arg, get_size_weight_list(params))
 
     stop = time.clock()
-    #smoothness = best_params["smoothness"]
-    #smoothness_bounded = max(parameters_range["smoothness"][0], min(smoothness, parameters_range["smoothness"][1]))
-    #if smoothness_bounded != smoothness:
-    #    logger.info("Bounding smoothness: %f -> %f" % (smoothness,smoothness_bounded))
-    #    best_params["smoothness"] = float(smoothness_bounded)
-
     logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params.iteritems())]))
     logger.debug("Time: %d" % (stop - start))
     logger.info("Parameter fitting finished with best score %f" % best_score)
-    # test_trained_parameters(image, best_params, precision, avg_cell_diameter)
     return PFSnake.merge_parameters(params, best_params), best_arg, best_score
 
 
@@ -245,9 +221,8 @@ def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diamete
         # multiprocessing do not work then
         method_name = "brutemaxbasin"
     if method_name == "mp":
-        best_params_encoded, distance = multiproc_multitype_fitness(images.image, gt_snakes, precision, avg_cell_diameter, params)
-        # test_trained_parameters(images.image, params, precision, avg_cell_diameter)
-        # return fitted_params, score
+        best_params_encoded, distance = multiproc_multitype_fitness(images.image, gt_snakes, precision,
+                                                                    avg_cell_diameter, params)
     else:
         if method_name == 'brute':
             best_params_encoded, distance = optimize_brute(encoded_params, fast_distance)
@@ -257,38 +232,31 @@ def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diamete
             best_params_encoded, distance = optimize_basinhopping(best_params_encoded, fast_distance, time_percent=100)
         elif method_name == 'brutemax3basin':
             _, _ = optimize_brute(encoded_params, fast_distance)
-            logger.debug("Best grid parameters distance are %s." %  str(zip(*best_3)[0]))
-            logger.debug("Best grid parameters parameters are %s." %  str(zip(*best_3)[1]))
+            logger.debug("Best grid parameters distance are %s." % str(zip(*best_3)[0]))
+            logger.debug("Best grid parameters parameters are %s." % str(zip(*best_3)[1]))
 
             best_basins = []
             for candidate in list(best_3):
-                best_basins.append(optimize_basinhopping(candidate[1], fast_distance, time_percent = 33))
+                best_basins.append(optimize_basinhopping(candidate[1], fast_distance, time_percent=33))
             best_basins.sort(key=lambda x: x[1])
 
             best_params_encoded, distance = best_basins[0]
         elif method_name == 'basin':
             best_params_encoded, distance = optimize_basinhopping(encoded_params, fast_distance)
-        elif method_name == 'diffevo':
-            best_params_encoded, distance = optimize_de(encoded_params, fast_distance)
 
     complete_distance = complete_distance(best_params_encoded)
     logger.debug("Final parameters complete-distance is (%f)." % (complete_distance))
     if initial_complete_distance <= complete_distance:
-        logger.debug("Initial parameters (%f) are not worse than the best found (%f)." % (initial_complete_distance, complete_distance))
+        logger.debug("Initial parameters (%f) are not worse than the best found (%f)." % (
+        initial_complete_distance, complete_distance))
         return encoded_params, initial_complete_distance
     else:
         return best_params_encoded, complete_distance
 
 
 def optimize_brute(params_to_optimize, distance_function):
-    broadness = 0.1
-    search_range = 10 * broadness
-
     lower_bound = params_to_optimize - np.maximum(np.abs(params_to_optimize), 0.1)
-    #lower_bound[params_to_optimize == 0] = -100 * search_range
-
     upper_bound = params_to_optimize + np.maximum(np.abs(params_to_optimize), 0.1)
-    #upper_bound[params_to_optimize == 0] = 100 * search_range
 
     # introduce random shift (0,grid step) # max 20%
     number_of_steps = 5
@@ -297,40 +265,22 @@ def optimize_brute(params_to_optimize, distance_function):
     lower_bound += random_shift * step
     upper_bound += random_shift * step
 
-    print lower_bound, upper_bound
-
-    logger.debug("Search range: " + str(zip(lower_bound,upper_bound)))
-    result = opt.brute(distance_function, zip(lower_bound, upper_bound), Ns=number_of_steps, disp=True, finish=None, full_output=True)
+    logger.debug("Search range: " + str(zip(lower_bound, upper_bound)))
+    result = opt.brute(distance_function, zip(lower_bound, upper_bound), Ns=number_of_steps, disp=True, finish=None,
+                       full_output=True)
     logger.debug("Opt finished:" + str(result[:2]))
     return result[0], result[1]
 
 
-def optimize_de(params_to_optimize, distance_function):
-    broadness = 0.1
-    search_range = 10 * broadness
-
-    lower_bound = params_to_optimize - np.maximum(np.abs(params_to_optimize), 0.1)
-    lower_bound[params_to_optimize == 0] = -100 * search_range
-
-    upper_bound = params_to_optimize + np.maximum(np.abs(params_to_optimize), 0.1)
-    upper_bound[params_to_optimize == 0] = 100 * search_range
-
-    bounds = zip(lower_bound, upper_bound)
-    result = opt.differential_evolution(distance_function, bounds, maxiter=10, popsize=30, init='latinhypercube')
-    logger.debug("Opt finished: " + str(result))
-    # fitness(result.x, debug=True)
-    return result.x, result.fun
-
-
-def optimize_basinhopping(params_to_optimize, distance_function, time_percent = 100):
+def optimize_basinhopping(params_to_optimize, distance_function, time_percent=100):
     minimizer_kwargs = {"method": "COBYLA"}
-    #bounds = ContourBounds
-    #minimizer_kwargs = {"method": "L-BFGS-B", "bounds" : zip(bounds.xmin,bounds.xmax)}
+    # bounds = ContourBounds
+    # minimizer_kwargs = {"method": "L-BFGS-B", "bounds" : zip(bounds.xmin,bounds.xmax)}
     bounds = None
-    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,  minimizer_kwargs=minimizer_kwargs, niter=35*time_percent/100)
+    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,
+                              minimizer_kwargs=minimizer_kwargs, niter=35 * time_percent / 100)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
-
 
 
 #
@@ -362,7 +312,6 @@ def general_multiproc_fitting(run_wrapper, *args):
             results.append(result_queue.get())
             optimizers_left -= 1
 
-
     for optimizer in optimizers:
         optimizer.join()
 
@@ -380,4 +329,5 @@ def run_wrapper(queue, update_queue, *args):
 
 
 def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, init_params=None):
-    return general_multiproc_fitting(run_wrapper, image, gt_snakes, precision, avg_cell_diameter, "brutemaxbasin", init_params)
+    return general_multiproc_fitting(run_wrapper, image, gt_snakes, precision, avg_cell_diameter, "brutemaxbasin",
+                                     init_params)

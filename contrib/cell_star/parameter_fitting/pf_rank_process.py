@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+Pf rank process is the core of ranking parameters fitting.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
-import copy
 import operator as op
 import random
 import time
@@ -14,18 +17,22 @@ random.seed(1)
 np.random.seed(1)
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 from contrib.cell_star.utils.params_util import *
 from contrib.cell_star.core.image_repo import ImageRepo
 from contrib.cell_star.core.snake_filter import SnakeFilter
 from contrib.cell_star.utils.debug_util import explore_cellstar
-from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, general_multiproc_fitting
+from contrib.cell_star.parameter_fitting.pf_process import get_gt_snake_seeds, grow_single_seed, \
+    general_multiproc_fitting
 from contrib.cell_star.parameter_fitting.pf_rank_snake import PFRankSnake
-from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, pf_rank_parameters_decode, RankBounds
+from contrib.cell_star.parameter_fitting.pf_auto_params import pf_parameters_encode, pf_rank_parameters_encode, \
+    pf_rank_parameters_decode, RankBounds
 from contrib.cell_star.parameter_fitting.pf_mutator import *
 
 import cellprofiler.preferences
+
 get_max_workers = cellprofiler.preferences.get_max_workers
 
 #
@@ -48,12 +55,15 @@ def show_progress(current_distance, calculation):
 # COST FUNCTION AND FITNESS
 #
 #
+
 best_so_far = 1000000000
 calculations = 0
 
+
 def maximal_distance(n):
     l = n - 1
-    return l*(l+1)*(l+2)/6.0 * 2
+    return l * (l + 1) * (l + 2) / 6.0 * 2
+
 
 def distance_smooth_norm(expected, result):
     """
@@ -64,7 +74,7 @@ def distance_smooth_norm(expected, result):
     """
     global best_so_far, calculations
     n = result.size
-    differences = abs(expected - result) ** 4 * np.arange(n*2, 0, -2)
+    differences = abs(expected - result) ** 4 * np.arange(n * 2, 0, -2)
     distance = norm(differences) / np.sqrt(n)
 
     best_so_far = min(best_so_far, distance)
@@ -72,6 +82,7 @@ def distance_smooth_norm(expected, result):
 
     show_progress(distance, calculations)
     return distance
+
 
 def distance_norm_list(expected, result):
     """
@@ -85,7 +96,9 @@ def distance_norm_list(expected, result):
     exp_position = dict([(obj, i) for (i, obj) in enumerate(expected)])
     given_position = dict([(obj, i) for (i, obj) in enumerate(result)])
     positions = enumerate(result)
-    distance = sum([abs(exp_position[obj] - i) ** 2 / (exp_position[obj]+1)**2 for (i, obj) in positions]) / maximal_distance(length)  # scaling to [0,1]
+    distance = sum(
+        [abs(exp_position[obj] - i) ** 2 / (exp_position[obj] + 1) ** 2 for (i, obj) in positions]) / maximal_distance(
+        length)  # scaling to [0,1]
 
     best_so_far = min(best_so_far, distance)
     calculations += 1
@@ -98,13 +111,14 @@ def calc_ranking(rank_snakes, pf_param_vector):
     rank_params_decoded = pf_rank_parameters_decode(pf_param_vector)
     fitness_order = sorted(rank_snakes, key=lambda x: -x.fitness)
     ranking_order = sorted(rank_snakes, key=lambda x: x.calculate_ranking(rank_params_decoded))
-    #logger.debug(sorted(pf_rank_parameters_decode(pf_param_vector).iteritems()))
     return distance_norm_list(fitness_order, ranking_order)
+
 
 def calc_smooth_ranking(rank_snakes, pf_param_vector):
     rank_params_decoded = pf_rank_parameters_decode(pf_param_vector)
     fitness_order = np.array([r.fitness for r in sorted(rank_snakes, key=lambda x: -x.fitness)])
-    ranking_order = np.array([r.fitness for r in sorted(rank_snakes, key=lambda x: x.calculate_ranking(rank_params_decoded))])
+    ranking_order = np.array(
+        [r.fitness for r in sorted(rank_snakes, key=lambda x: x.calculate_ranking(rank_params_decoded))])
     return distance_smooth_norm(fitness_order, ranking_order)
 
 
@@ -123,9 +137,11 @@ def filter_snakes_as_singles(parameters, images, snakes):
     @type snakes: list[(GTSnake, PFRankSnake)]
     """
     filterer = SnakeFilter(images, parameters)
-    proper_snakes = [(gt,snake) for gt,snake in snakes if not filterer.is_single_snake_discarded(snake.grown_snake)]
+    proper_snakes = [(gt, snake) for gt, snake in snakes if not filterer.is_single_snake_discarded(snake.grown_snake)]
     logger.debug("Filtering left %d out of %d rank snakes" % (len(snakes) - len(proper_snakes), len(snakes)))
     return proper_snakes
+
+
 #
 #
 # OPTIMIZATION
@@ -194,8 +210,9 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
     gt_snake_seed_pairs = [(gt_snake, seed) for gt_snake in gt_snakes for seed in
                            get_gt_snake_seeds(gt_snake, max_radius=radius, number=8, min_radius=2 * radius / 3.0)
                            + get_gt_snake_seeds(gt_snake, max_radius=radius, number=8, min_radius=4 * radius / 5.0)
-                           + get_gt_snake_seeds(gt_snake, max_radius=radius_big, number=8, min_radius=3 * radius_big / 4.0)
-                            ]
+                           + get_gt_snake_seeds(gt_snake, max_radius=radius_big, number=8,
+                                                min_radius=3 * radius_big / 4.0)
+                           ]
 
     gt_snake_grown_seed_pairs = \
         [(gt_snake, grow_single_seed(seed, images, params, encoded_star_params)) for gt_snake, seed in
@@ -205,16 +222,16 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
                                            [PFRankSnake.create_all(gt, grown, params) for (gt, grown) in
                                             gt_snake_grown_seed_pairs])
 
-    #gt_snake_grown_seed_pairs_filtered = filter_snakes_as_singles(params, images, gt_snake_grown_seed_pairs_all)
+    # gt_snake_grown_seed_pairs_filtered = filter_snakes_as_singles(params, images, gt_snake_grown_seed_pairs_all)
     gt_snake_grown_seed_pairs_filtered = gt_snake_grown_seed_pairs_all
 
-    #gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all, avg_cell_diameter)
+    # gts_snakes_with_mutations = add_mutations(gt_snake_grown_seed_pairs_all, avg_cell_diameter)
     gts_snakes_with_mutations = gt_snake_grown_seed_pairs_filtered
     ranked_snakes = zip(*gts_snakes_with_mutations)[1]
 
     explore_cellstar(image=images.image, images=images, params=params,
-                                  seeds=[sp[1].grown_snake.seed for sp in gts_snakes_with_mutations],
-                                  snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
+                     seeds=[sp[1].grown_snake.seed for sp in gts_snakes_with_mutations],
+                     snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
 
     calculations = 0
     best_params_encoded, distance = optimize(
@@ -226,18 +243,16 @@ def run_singleprocess(image, gt_snakes, precision=None, avg_cell_diameter=None, 
     stop = time.clock()
 
     best_params_org = pf_rank_parameters_decode(best_params_encoded)
-    best_params_normalized = pf_rank_parameters_decode(best_params_encoded)
-    best_params_full = PFRankSnake.merge_rank_parameters(params, best_params_normalized)
+    best_params_full = PFRankSnake.merge_rank_parameters(params, best_params_org)
 
     explore_cellstar(image=images.image, images=images, params=best_params_full,
-                                  seeds=[sp[1].grown_snake.seed for sp in gts_snakes_with_mutations],
-                                  snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
+                     seeds=[sp[1].grown_snake.seed for sp in gts_snakes_with_mutations],
+                     snakes=[sp[1].grown_snake for sp in gts_snakes_with_mutations])
 
     logger.debug("Best: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params_org.iteritems())]))
-    logger.debug("Best normalized: \n" + "\n".join([k + ": " + str(v) for k, v in sorted(best_params_normalized.iteritems())]))
     logger.debug("Time: %d" % (stop - start))
     logger.info("Ranking parameter fitting finished with best score %f" % distance)
-    return best_params_full, best_params_normalized, distance
+    return best_params_full, best_params_org, distance
 
 
 #
@@ -276,10 +291,9 @@ def optimize_brute(params_to_optimize, distance_function):
     lower_bound += random_shift * step
     upper_bound += random_shift * step
 
-    print lower_bound, upper_bound
-
     start = time.clock()
-    result = opt.brute(distance_function, zip(lower_bound, upper_bound), finish=None, Ns=number_of_steps, disp=True, full_output=True)
+    result = opt.brute(distance_function, zip(lower_bound, upper_bound), finish=None, Ns=number_of_steps, disp=True,
+                       full_output=True)
     elapsed = time.clock() - start
 
     logger.debug("Opt finished: " + str(result[:2]) + " Elapsed[s]: " + str(elapsed))
@@ -289,9 +303,10 @@ def optimize_brute(params_to_optimize, distance_function):
 
 def optimize_basinhopping(params_to_optimize, distance_function):
     bounds = RankBounds
-    #minimizer_kwargs = {"method": "COBYLA", bounds=bounds}
-    minimizer_kwargs = {"method": "L-BFGS-B", "bounds" : zip(bounds.xmin,bounds.xmax)}
-    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds, minimizer_kwargs=minimizer_kwargs, niter=170)
+    # minimizer_kwargs = {"method": "COBYLA", bounds=bounds}
+    minimizer_kwargs = {"method": "L-BFGS-B", "bounds": zip(bounds.xmin, bounds.xmax)}
+    result = opt.basinhopping(distance_function, params_to_optimize, accept_test=bounds,
+                              minimizer_kwargs=minimizer_kwargs, niter=170)
     logger.debug("Opt finished: " + str(result))
     return result.x, result.fun
 

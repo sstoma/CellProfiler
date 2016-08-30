@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
-__author__ = 'Adam Kaczmarek, Filip Mróz'
+"""
+PFSnake represents one grown from a seed contour within a ground truth contour used in contour parameters fitting.
+GTSnake represents one ground truth contour.
+Date: 2013-2016
+Website: http://cellstar-algorithm.org/
+"""
 
 import copy
 import random
+
 random.seed(1)  # make it deterministic
 import numpy as np
 import scipy.ndimage.morphology as morph
@@ -14,17 +20,16 @@ from contrib.cell_star.core.polar_transform import PolarTransform
 
 
 class PFSnake(object):
-
     def __init__(self, seed, image_repo, params, best_snake=None):
         if seed is not None:
-
-            self.fit = 0.0  # MINIMAL FIT
+            self.fit = 0.0
             self.seed = seed
             self.snakes = []
             self.images = image_repo
             self.initial_parameters = params
             self.point_number = params["segmentation"]["stars"]["points"]
             self.orig_size_weight_list = params["segmentation"]["stars"]["sizeWeight"]
+
             if isinstance(self.orig_size_weight_list, float):
                 self.orig_size_weight_list = [self.orig_size_weight_list]
             self.avg_cell_diameter = params["segmentation"]["avgCellDiameter"]
@@ -105,11 +110,12 @@ class PFSnake(object):
     @staticmethod
     def fitness_with_gt(snake, gt_snake):
         intersection = PFSnake.gt_snake_intersection(snake, gt_snake)
-        return intersection / (gt_snake.area + (snake.area - intersection) * PFSnake.out_of_gt_penalty(snake.area, gt_snake.area, intersection))
+        return intersection / (
+        gt_snake.area + (snake.area - intersection) * PFSnake.out_of_gt_penalty(snake.area, gt_snake.area,
+                                                                                intersection))
 
     def multi_fitness(self, gt_snake):
         return max([PFSnake.fitness_with_gt(pf_snake, gt_snake) for pf_snake in self.snakes])
-
 
 
 class GTSnake(object):
@@ -121,10 +127,10 @@ class GTSnake(object):
             self.seed = seed
             self.centroid_x, self.centroid_y = seed.x, seed.y
         else:
-            self._calculate_centroids(binary_mask)
+            self.calculate_centroids(binary_mask)
             self.seed = Seed(self.centroid_x, self.centroid_y, "gt_snake")
 
-    def _calculate_centroids(self, binary_mask):
+    def calculate_centroids(self, binary_mask):
         self.centroid_y, self.centroid_x = measure.center_of_mass(binary_mask, binary_mask, [1])[0]
 
     def set_erosion(self, size):
