@@ -35,7 +35,13 @@ import cellprofiler.preferences
 get_max_workers = cellprofiler.preferences.get_max_workers
 
 min_number_of_chosen_seeds = 6
+
+MAX_NUMBER_OF_CHOSEN_SNAKES_NORMAL = 20
+MAX_NUMBER_OF_CHOSEN_SNAKES_SUPERFIT = 40
 max_number_of_chosen_snakes = 20
+
+SEARCH_LENGTH_NORMAL = 100
+SEARCH_LENGTH_SUPERFIT = 400
 
 #
 #
@@ -43,15 +49,19 @@ max_number_of_chosen_snakes = 20
 #
 #
 
-ESTIMATED_CALCULATIONS_NUMBER = 3000.0
+ESTIMATED_CALCULATIONS_NUMBER_NORMAL = 3000.0
+ESTIMATED_CALCULATIONS_NUMBER_SUPERFIT = ESTIMATED_CALCULATIONS_NUMBER_NORMAL \
+                                         * SEARCH_LENGTH_SUPERFIT / SEARCH_LENGTH_NORMAL * 0.6
+estimated_calculations_number = ESTIMATED_CALCULATIONS_NUMBER_NORMAL
+
 callback_progress = None
 
 
 def show_progress(current_distance, calculation):
     if calculation % 100 == 0:
         logger.debug("Current distance: %f, Best: %f, Calc %d" % (current_distance, best_so_far, calculation))
-    if callback_progress is not None and calculation % (ESTIMATED_CALCULATIONS_NUMBER / 50) == 0:
-        callback_progress(float(calculation) / ESTIMATED_CALCULATIONS_NUMBER)
+    if callback_progress is not None and calculation % (estimated_calculations_number / 50) == 0:
+        callback_progress(float(calculation) / estimated_calculations_number)
 
 
 #
@@ -157,6 +167,10 @@ def pf_get_distances(gt_snakes, images, initial_parameters, callback=None):
             current_distance = distance_norm(
                 snakes_fitness(pairs_to_use, images, initial_parameters, partial_parameters, debug=debug)
             )
+
+            # keep 3 best results
+            keep_3_best(partial_parameters, current_distance)
+
             if callback is not None:
                 callback(partial_parameters, current_distance)
 
@@ -210,6 +224,19 @@ def run(image, gt_snakes, precision, avg_cell_diameter, method='brute', initial_
 
 
 def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diameter):
+    global max_number_of_chosen_snakes, estimated_calculations_number
+
+    search_length = SEARCH_LENGTH_NORMAL
+    max_number_of_chosen_snakes = MAX_NUMBER_OF_CHOSEN_SNAKES_NORMAL
+    estimated_calculations_number = ESTIMATED_CALCULATIONS_NUMBER_NORMAL
+    if method_name == 'superfit':
+        # changes time limits to much longer
+        search_length = SEARCH_LENGTH_SUPERFIT
+        max_number_of_chosen_snakes = MAX_NUMBER_OF_CHOSEN_SNAKES_SUPERFIT
+        estimated_calculations_number = ESTIMATED_CALCULATIONS_NUMBER_SUPERFIT
+        method_name = 'brutemax3basin'
+        pass
+
     encoded_params = pf_parameters_encode(params)
     complete_distance, fast_distance = pf_get_distances(gt_snakes, images, params)
     initial_distance = fast_distance(encoded_params)
@@ -217,27 +244,30 @@ def optimize(method_name, gt_snakes, images, params, precision, avg_cell_diamete
     logger.debug("Initial parameters complete-distance is (%f)." % (initial_complete_distance))
     logger.debug("Initial parameters distance is (%f)." % (initial_distance))
     logger.debug("Initial parameters are %s." % params)
-    if method_name == "mp" and getattr(sys, "frozen", False) and sys.platform == 'win32':
+    if method_name.startswith("mp") and getattr(sys, "frozen", False) and sys.platform == 'win32':
         # multiprocessing do not work then
         method_name = "brutemaxbasin"
     if method_name == "mp":
         best_params_encoded, distance = multiproc_multitype_fitness(images.image, gt_snakes, precision,
-                                                                    avg_cell_diameter, params)
+                                                                    avg_cell_diameter, "brutemaxbasin", params)
+    elif method_name == "mp_superfit":
+        best_params_encoded, distance = multiproc_multitype_fitness(images.image, gt_snakes, precision,
+                                                                    avg_cell_diameter, "superfit", params)
     else:
         if method_name == 'brute':
             best_params_encoded, distance = optimize_brute(encoded_params, fast_distance)
         elif method_name == 'brutemaxbasin':
             best_params_encoded, distance = optimize_brute(encoded_params, fast_distance)
             logger.debug("Best grid parameters distance is (%f)." % distance)
-            best_params_encoded, distance = optimize_basinhopping(best_params_encoded, fast_distance, time_percent=100)
+            best_params_encoded, distance = optimize_basinhopping(best_params_encoded, fast_distance, time_percent=search_length)
         elif method_name == 'brutemax3basin':
             _, _ = optimize_brute(encoded_params, fast_distance)
             logger.debug("Best grid parameters distance are %s." % str(zip(*best_3)[0]))
-            logger.debug("Best grid parameters parameters are %s." % str(zip(*best_3)[1]))
+            logger.debug("3-best grid parameters  are %s." % str(zip(*best_3)[1]))
 
             best_basins = []
             for candidate in list(best_3):
-                best_basins.append(optimize_basinhopping(candidate[1], fast_distance, time_percent=33))
+                best_basins.append(optimize_basinhopping(candidate[1], fast_distance, time_percent=search_length/3))
             best_basins.sort(key=lambda x: x[1])
 
             best_params_encoded, distance = best_basins[0]
@@ -328,6 +358,6 @@ def run_wrapper(queue, update_queue, *args):
     queue.put(result)
 
 
-def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, init_params=None):
-    return general_multiproc_fitting(run_wrapper, image, gt_snakes, precision, avg_cell_diameter, "brutemaxbasin",
+def multiproc_multitype_fitness(image, gt_snakes, precision, avg_cell_diameter, method, init_params=None):
+    return general_multiproc_fitting(run_wrapper, image, gt_snakes, precision, avg_cell_diameter, method,
                                      init_params)

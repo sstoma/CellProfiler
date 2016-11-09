@@ -266,7 +266,7 @@ def optimize(method_name, encoded_params, distance_function):
     logger.debug("Initial parameters distance is (%f)." % initial_distance)
     if method_name == 'brute':
         best_params_encoded, distance = optimize_brute(encoded_params, distance_function)
-    elif method_name == 'brutemaxbasin':
+    elif method_name == 'brutemaxbasin' or method_name == 'superfit':
         best_params_encoded, distance = optimize_brute(encoded_params, distance_function)
         logger.debug("Best grid parameters distance is (%f)." % distance)
         best_params_encoded, distance = optimize_basinhopping(best_params_encoded, distance_function)

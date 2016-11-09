@@ -17,7 +17,7 @@ from contrib.cell_star.segmentation import Segmentation
 from contrib.cell_star.tests.test_contour_pf import try_load_image, image_to_label, gt_label_to_snakes
 
 
-def test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None, options=None):
+def test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None, options=None, callback_progress=None):
     frame = try_load_image(image_path)
 
     if options == 'invert':
@@ -28,7 +28,8 @@ def test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, in
     gt_mask = image_to_label(gt_image)
 
     gt_snakes = gt_label_to_snakes(gt_mask)
-    if method == "mp":
+    pf_rank.callback_progress = callback_progress
+    if method == "mp" or method == "mp_superfit":
         return pf_rank.run_multiprocess(frame, gt_snakes, precision, avg_cell_diameter, 'brutemaxbasin',
                                         initial_params=initial_params)
     else:

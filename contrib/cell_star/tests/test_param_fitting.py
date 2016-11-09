@@ -19,6 +19,9 @@ from contrib.cell_star.tests.test_rank_pf import test_rank_pf
 
 logger = logging.getLogger(__name__)
 
+def show_progress(fraction):
+    print "Progress {0:.1f}%".format(fraction * 100)
+
 if __name__ == "__main__":
     if len(sys.argv) < 7:
         print "Usage: <script> base_path image_path mask_path precision avg_cell_diameter method {image_result_path} {-O options}"
@@ -30,8 +33,16 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.addHandler(ch)
 
-    pf_process.get_max_workers = lambda: 2
-    pf_rank.get_max_workers = lambda: 2
+    method = sys.argv[6]
+
+    workers_num = 2
+    callback_progress = None
+    if method == "mp_superfit":
+        workers_num = 6
+        callback_progress = show_progress
+    pf_process.get_max_workers = lambda: workers_num
+    pf_rank.get_max_workers = lambda: workers_num
+
     image_result_path = None
     options = None
     if len(sys.argv) >= 8:
@@ -58,8 +69,8 @@ if __name__ == "__main__":
     #default = default_parameters(segmentation_precision=precision, avg_cell_diameter=avg_cell_diameter)
 
     #complete_params = full_params_contour
-    full_params_contour, _, _ = test_pf.test_pf(image_path, mask_path, precision, avg_cell_diameter, sys.argv[6], options=options)
-    complete_params, _, _ = test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, sys.argv[6], initial_params=full_params_contour, options=options)
+    full_params_contour, _, _ = test_pf.test_pf(image_path, mask_path, precision, avg_cell_diameter, method, options=options, callback_progress=callback_progress)
+    complete_params, _, _ = test_rank_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=full_params_contour, options=options, callback_progress=callback_progress)
 
     #complete_params["segmentation"]["ranking"]["stickingWeight"] = 60.0
 

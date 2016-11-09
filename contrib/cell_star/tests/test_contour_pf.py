@@ -52,7 +52,7 @@ def test_trained_parameters(image, star_params, ranking_params, precision, avg_c
 #
 #
 
-def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None, options=None):
+def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial_params=None, options=None, callback_progress=None):
     frame = try_load_image(image_path)
 
     if options == 'invert':
@@ -64,6 +64,7 @@ def test_pf(image_path, mask_path, precision, avg_cell_diameter, method, initial
 
     gt_snakes = gt_label_to_snakes(gt_mask)
 
+    pf_process.callback_progress = callback_progress
     return run(frame, gt_snakes, precision, avg_cell_diameter, method, initial_params=initial_params)
 
 
